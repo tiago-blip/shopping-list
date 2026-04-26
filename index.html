@@ -177,6 +177,8 @@
   .icon-btn.search-btn.loading { pointer-events: none; overflow: hidden; }
   .icon-btn.search-btn.loading span { display: none; }
   .icon-btn.search-btn.loading::after { content: ''; position: absolute; inset: 5px; border-radius: 50%; border: 2px solid var(--line); border-top-color: var(--blue); animation: spin 0.7s linear infinite; }
+  .icon-btn.search-btn.error { background: var(--red-bg); color: var(--red); }
+  .icon-btn.search-btn.error:hover { background: var(--red-bg); color: var(--red); }
   @keyframes spin { to { transform: rotate(360deg); } }
 
   /* ── Links panel ── */
@@ -456,6 +458,7 @@ let state = [];
 let settings = {};
 let openPanels = new Set();
 let loadingItems = new Set();
+let errorItems = new Set();
 let unsubscribe = null;
 let saveTimer = null;
 
@@ -634,12 +637,10 @@ function rankResults(results) {
 }
 
 async function searchGoogleShopping(si, ii) {
-  if (!settings.serpApiKey) {
-    openSettings();
-    return;
-  }
+  if (!settings.serpApiKey) { openSettings(); return; }
   const panelKey = `${si}-${ii}`;
   loadingItems.add(panelKey);
+  errorItems.delete(panelKey);
   render();
 
   try {
@@ -647,19 +648,20 @@ async function searchGoogleShopping(si, ii) {
     const params = new URLSearchParams({
       engine: 'google_shopping',
       q: state[si].items[ii].name,
-      num: '10',
-      tbs: 'p_ord:rv',
       api_key: settings.serpApiKey
     });
     if (location) params.set('location', location);
 
     const res = await fetch(`https://serpapi.com/search.json?${params}`);
-    if (!res.ok) throw new Error(`SerpAPI ${res.status}`);
     const data = await res.json();
+    console.log('SerpAPI response:', data);
 
-    const top3 = rankResults(data.shopping_results || []);
-    if (!top3.length) throw new Error('No results found');
+    if (!res.ok) throw new Error(data.error || `SerpAPI error ${res.status}`);
 
+    const results = data.shopping_results || [];
+    if (!results.length) throw new Error('No shopping results returned');
+
+    const top3 = rankResults(results);
     if (!state[si].items[ii].links) state[si].items[ii].links = [];
     top3.forEach(r => {
       state[si].items[ii].links.push({
@@ -674,6 +676,8 @@ async function searchGoogleShopping(si, ii) {
     scheduleSave();
   } catch (err) {
     console.error('Search failed:', err);
+    errorItems.add(panelKey);
+    setTimeout(() => { errorItems.delete(panelKey); render(); }, 3000);
   } finally {
     loadingItems.delete(panelKey);
     render();
@@ -772,13 +776,13 @@ function render() {
 
       // Search button
       const isLoading = loadingItems.has(panelKey);
+      const isError = errorItems.has(panelKey);
       const hasSettings = !!settings.serpApiKey;
       const searchBtn = document.createElement('button');
-      searchBtn.className = 'icon-btn search-btn' + (isLoading ? ' loading' : '');
-      searchBtn.innerHTML = `<span>✨</span>`;
-      searchBtn.title = hasSettings ? 'Find options on Google Shopping' : 'Add your SerpAPI key in Settings first';
-      searchBtn.disabled = isLoading;
-      if (!hasSettings) searchBtn.disabled = true;
+      searchBtn.className = 'icon-btn search-btn' + (isLoading ? ' loading' : '') + (isError ? ' error' : '');
+      searchBtn.innerHTML = `<span>${isError ? '!' : '✨'}</span>`;
+      searchBtn.title = isError ? 'Search failed — check console for details' : hasSettings ? 'Find options on Google Shopping' : 'Add your SerpAPI key in Settings first';
+      searchBtn.disabled = isLoading || !hasSettings;
       searchBtn.onclick = () => searchGoogleShopping(si, ii);
 
       const linkBtn = document.createElement('button');
