@@ -314,6 +314,8 @@
   .list-card-open { font-size: 13px; font-weight: 600; color: var(--blue); }
   .list-card-archive { font-size: 12px; color: var(--muted); background: none; border: none; cursor: pointer; padding: 0; font-family: inherit; transition: color 0.15s; }
   .list-card-archive:hover { color: var(--red); }
+  .list-card-archived { opacity: 0.6; }
+  .list-card-archived:hover { opacity: 1; }
   .new-list-card { background: transparent; border: 2px dashed rgba(0,122,255,0.25); border-radius: var(--radius); padding: 20px; cursor: pointer; font-family: inherit; font-size: 15px; font-weight: 600; color: var(--blue); transition: all 0.15s; text-align: center; min-height: 100px; display: flex; align-items: center; justify-content: center; }
   .new-list-card:hover { background: var(--blue-bg); border-color: var(--blue); }
   .homepage-empty { display: flex; flex-direction: column; align-items: center; padding: 80px 20px; text-align: center; }
@@ -666,13 +668,13 @@ function renderHomepage(uid, lists) {
   if (!container) return;
   container.innerHTML = '';
 
-  if (!lists.length) {
+  const active = lists.filter(l => !l.archived);
+  const archived = lists.filter(l => l.archived);
+
+  if (!active.length && !archived.length) {
     const empty = document.createElement('div');
     empty.className = 'homepage-empty';
-    empty.innerHTML = `
-      <h2>No lists yet</h2>
-      <p>Create your first list to get started.</p>
-    `;
+    empty.innerHTML = `<h2>No lists yet</h2><p>Create your first list to get started.</p>`;
     const btn = document.createElement('button');
     btn.className = 'btn-primary';
     btn.textContent = 'Create list';
@@ -682,13 +684,9 @@ function renderHomepage(uid, lists) {
     return;
   }
 
-  const grid = document.createElement('div');
-  grid.className = 'lists-grid';
-  grid.style.marginTop = '24px';
-
-  lists.forEach(list => {
+  function makeCard(list, isArchived) {
     const card = document.createElement('div');
-    card.className = 'list-card';
+    card.className = 'list-card' + (isArchived ? ' list-card-archived' : '');
     const dateStr = list.createdAt?.toDate
       ? list.createdAt.toDate().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
       : '';
@@ -700,29 +698,61 @@ function renderHomepage(uid, lists) {
     dateDiv.textContent = dateStr;
     const footer = document.createElement('div');
     footer.className = 'list-card-footer';
-    const openSpan = document.createElement('span');
-    openSpan.className = 'list-card-open';
-    openSpan.textContent = 'Open →';
-    const archiveBtn = document.createElement('button');
-    archiveBtn.className = 'list-card-archive';
-    archiveBtn.textContent = 'Archive';
-    archiveBtn.onclick = (e) => { e.stopPropagation(); archiveList(uid, list.listId); };
-    footer.appendChild(openSpan);
-    footer.appendChild(archiveBtn);
+    if (isArchived) {
+      const openSpan = document.createElement('span');
+      openSpan.className = 'list-card-open';
+      openSpan.textContent = 'Open →';
+      const unarchiveBtn = document.createElement('button');
+      unarchiveBtn.className = 'list-card-archive';
+      unarchiveBtn.textContent = 'Unarchive';
+      unarchiveBtn.onclick = (e) => { e.stopPropagation(); unarchiveList(uid, list.listId); };
+      footer.appendChild(openSpan);
+      footer.appendChild(unarchiveBtn);
+    } else {
+      const openSpan = document.createElement('span');
+      openSpan.className = 'list-card-open';
+      openSpan.textContent = 'Open →';
+      const archiveBtn = document.createElement('button');
+      archiveBtn.className = 'list-card-archive';
+      archiveBtn.textContent = 'Archive';
+      archiveBtn.onclick = (e) => { e.stopPropagation(); archiveList(uid, list.listId); };
+      footer.appendChild(openSpan);
+      footer.appendChild(archiveBtn);
+    }
     card.appendChild(titleDiv);
     card.appendChild(dateDiv);
     card.appendChild(footer);
     card.onclick = () => openList(list.listId);
-    grid.appendChild(card);
-  });
+    return card;
+  }
 
-  const newCard = document.createElement('button');
-  newCard.className = 'new-list-card';
-  newCard.textContent = '+ New list';
-  newCard.onclick = () => createNewList(uid);
-  grid.appendChild(newCard);
+  if (active.length || !archived.length) {
+    const grid = document.createElement('div');
+    grid.className = 'lists-grid';
+    grid.style.marginTop = '24px';
+    active.forEach(list => grid.appendChild(makeCard(list, false)));
+    const newCard = document.createElement('button');
+    newCard.className = 'new-list-card';
+    newCard.textContent = '+ New list';
+    newCard.onclick = () => createNewList(uid);
+    grid.appendChild(newCard);
+    container.appendChild(grid);
+  }
 
-  container.appendChild(grid);
+  if (archived.length) {
+    const archiveSection = document.createElement('div');
+    archiveSection.style.cssText = 'margin-top: 40px;';
+    const archiveHeading = document.createElement('div');
+    archiveHeading.className = 'section-label';
+    archiveHeading.style.cssText = 'padding: 0 4px 12px; display:block;';
+    archiveHeading.textContent = 'Archived';
+    archiveSection.appendChild(archiveHeading);
+    const archiveGrid = document.createElement('div');
+    archiveGrid.className = 'lists-grid';
+    archived.forEach(list => archiveGrid.appendChild(makeCard(list, true)));
+    archiveSection.appendChild(archiveGrid);
+    container.appendChild(archiveSection);
+  }
 }
 
 async function registerListForUser(uid, listId, title) {
@@ -739,7 +769,7 @@ async function createNewList(uid) {
   const listId = generateId();
   const title = 'New List';
   await db.collection('lists').doc(listId).set({
-    state: DEFAULT_STATE,
+    state: [],
     title,
     settings: {},
     createdAt: firebase.firestore.FieldValue.serverTimestamp(),
@@ -761,9 +791,13 @@ function openList(listId) {
 }
 
 function archiveList(uid, listId) {
-  if (!confirm('Remove this list from your homepage? The list data is not deleted.')) return;
-  db.collection('users').doc(uid).collection('lists').doc(listId).delete()
+  db.collection('users').doc(uid).collection('lists').doc(listId).update({ archived: true })
     .catch(e => console.error('Archive failed:', e));
+}
+
+function unarchiveList(uid, listId) {
+  db.collection('users').doc(uid).collection('lists').doc(listId).update({ archived: false })
+    .catch(e => console.error('Unarchive failed:', e));
 }
 
 // ── Settings ──────────────────────────────────────────────────────
