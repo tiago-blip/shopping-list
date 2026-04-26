@@ -60,24 +60,22 @@
     backdrop-filter: blur(20px) saturate(180%);
     -webkit-backdrop-filter: blur(20px) saturate(180%);
   }
-  @media (prefers-color-scheme: dark) {
-    .app-header { background: rgba(28,28,30,0.92); }
-  }
-  @supports not (backdrop-filter: blur(1px)) {
-    .app-header { background: var(--bg); }
-  }
+  @media (prefers-color-scheme: dark) { .app-header { background: rgba(28,28,30,0.92); } }
+  @supports not (backdrop-filter: blur(1px)) { .app-header { background: var(--bg); } }
   .app-header-inner { max-width: 680px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
   .app-title { font-size: clamp(1.5rem, 5vw, 2rem); font-weight: 700; letter-spacing: -0.03em; color: var(--ink); flex-shrink: 0; }
   #list-title { border-radius: 6px; padding: 2px 6px; margin: -2px -6px; outline: none; transition: background 0.15s; cursor: text; }
   #list-title:hover, #list-title:focus { background: rgba(120,120,128,0.12); }
 
-  .auth-area { display: flex; align-items: center; gap: 8px; }
+  .auth-area { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
   .auth-email { font-size: 12px; color: var(--muted); max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .header-btn { font-size: 13px; font-weight: 600; border: none; border-radius: 20px; padding: 6px 14px; cursor: pointer; font-family: inherit; white-space: nowrap; transition: opacity 0.15s; }
   .header-btn:hover { opacity: 0.75; }
   .share-btn { color: var(--ink2); background: var(--surface2); }
   .signin-btn { color: var(--blue); background: var(--blue-bg); }
   .signout-btn { color: var(--muted); background: var(--surface2); font-weight: 400; font-size: 12px; }
+  .settings-btn { background: var(--surface2); border: none; border-radius: 20px; padding: 6px 10px; cursor: pointer; font-size: 15px; line-height: 1; transition: opacity 0.15s; }
+  .settings-btn:hover { opacity: 0.75; }
 
   .container { max-width: 680px; margin: 0 auto; padding: 24px 16px 0; }
   .hint { font-size: 13px; color: var(--muted); margin-bottom: 20px; padding: 0 4px; }
@@ -89,32 +87,46 @@
   .google-btn { display: flex; align-items: center; gap: 10px; background: var(--surface); border: 1.5px solid var(--line); border-radius: 12px; padding: 13px 24px; font-size: 15px; font-weight: 600; font-family: inherit; cursor: pointer; color: var(--ink); transition: background 0.15s; }
   .google-btn:hover { background: var(--surface2); }
 
+  /* ── Settings modal ── */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 100; display: flex; align-items: center; justify-content: center; padding: 20px; backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); }
+  .modal { background: var(--surface); border-radius: var(--radius); padding: 24px; width: 100%; max-width: 400px; max-height: 85vh; overflow-y: auto; }
+  .modal-title { font-size: 18px; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 6px; }
+  .modal-subtitle { font-size: 13px; color: var(--muted); margin-bottom: 24px; line-height: 1.4; }
+  .settings-group { margin-bottom: 20px; }
+  .settings-group-label { font-size: 11px; font-weight: 600; color: var(--muted); letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 10px; padding: 0 2px; }
+  .settings-field { display: flex; flex-direction: column; gap: 5px; margin-bottom: 12px; }
+  .settings-field:last-child { margin-bottom: 0; }
+  .settings-field label { font-size: 13px; font-weight: 500; color: var(--ink2); }
+  .settings-field input { background: var(--surface2); border: 1.5px solid var(--line); border-radius: var(--radius-sm); padding: 10px 12px; font-family: inherit; font-size: 15px; color: var(--ink); transition: border-color 0.15s; }
+  .settings-field input:focus { outline: none; border-color: var(--blue); }
+  .settings-field input::placeholder { color: var(--muted); }
+  .settings-note { font-size: 12px; color: var(--muted); margin-top: 6px; line-height: 1.4; }
+  .settings-note a { color: var(--blue); }
+  .modal-actions { display: flex; gap: 10px; margin-top: 24px; justify-content: flex-end; }
+  .btn-primary { background: var(--blue); color: white; border: none; border-radius: var(--radius-sm); padding: 10px 20px; font-family: inherit; font-size: 15px; font-weight: 600; cursor: pointer; transition: background 0.15s; }
+  .btn-primary:hover { background: #0066d6; }
+  .btn-cancel { background: var(--surface2); color: var(--ink2); border: none; border-radius: var(--radius-sm); padding: 10px 20px; font-family: inherit; font-size: 15px; font-weight: 500; cursor: pointer; transition: opacity 0.15s; }
+  .btn-cancel:hover { opacity: 0.75; }
+  .settings-saved { font-size: 13px; color: var(--green); font-weight: 500; align-self: center; margin-right: auto; }
+
   /* ── Section ── */
   .section { margin-bottom: 32px; }
   .section-header { display: flex; align-items: center; justify-content: space-between; padding: 0 4px 8px; }
   .section-label { font-size: 13px; font-weight: 600; letter-spacing: 0.01em; color: var(--muted); text-transform: uppercase; }
   .delete-section-btn { font-size: 13px; color: var(--red); background: none; border: none; cursor: pointer; padding: 2px 0; opacity: 0.7; transition: opacity 0.15s; font-family: inherit; }
   .delete-section-btn:hover { opacity: 1; }
-
   .section-card { background: var(--surface); border-radius: var(--radius); overflow: hidden; }
 
   /* ── Item ── */
   .item-wrap { border-bottom: 1px solid var(--line); }
   .item-wrap:last-child { border-bottom: none; }
-  .item { display: grid; grid-template-columns: auto 1fr auto auto auto; align-items: center; gap: 10px; padding: 13px 16px; }
+  .item { display: grid; grid-template-columns: auto 1fr auto auto auto auto; align-items: center; gap: 8px; padding: 13px 16px; }
 
   .item-toggle {
-    width: 28px; height: 28px;
-    border-radius: 50%;
-    border: 2px solid var(--line);
-    background: transparent;
-    cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
-    flex-shrink: 0;
-    transition: all 0.2s;
-    color: transparent;
-    font-size: 13px;
-    position: relative;
+    width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--line);
+    background: transparent; cursor: pointer; display: flex; align-items: center;
+    justify-content: center; flex-shrink: 0; transition: all 0.2s; color: transparent;
+    font-size: 13px; position: relative;
   }
   .item-toggle::after { content: ''; position: absolute; inset: -10px; }
   .item-toggle:hover { border-color: var(--green); }
@@ -128,7 +140,6 @@
   }
   .item-name-input:focus { outline: none; }
   .item-name-input.skipped { color: var(--muted); text-decoration: line-through; }
-
   .item-name-link { font-size: 17px; color: var(--blue); text-decoration: none; }
   .item-name-link:hover { text-decoration: underline; }
   .item-name-link.skipped { color: var(--muted); text-decoration: line-through; }
@@ -158,6 +169,16 @@
   .icon-btn.link-btn.has-links { background: var(--blue); color: white; }
   .icon-btn.link-btn.has-links:hover { background: #0066d6; }
 
+  /* ── Search (sparkle) button ── */
+  .icon-btn.search-btn { font-size: 14px; }
+  .icon-btn.search-btn:hover { color: #ff9f0a; background: rgba(255,159,10,0.12); }
+  .icon-btn.search-btn:disabled { opacity: 0.25; cursor: default; }
+  .icon-btn.search-btn:disabled:hover { background: var(--surface2); color: var(--muted); }
+  .icon-btn.search-btn.loading { pointer-events: none; overflow: hidden; }
+  .icon-btn.search-btn.loading span { display: none; }
+  .icon-btn.search-btn.loading::after { content: ''; position: absolute; inset: 5px; border-radius: 50%; border: 2px solid var(--line); border-top-color: var(--blue); animation: spin 0.7s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
   /* ── Links panel ── */
   .links-panel { background: var(--surface2); margin: 0 12px 12px; border-radius: var(--radius-sm); padding: 14px 16px; display: none; }
   .links-panel.open { display: block; }
@@ -168,9 +189,8 @@
 
   .option-radio {
     width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--line);
-    background: transparent; cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
-    flex-shrink: 0; transition: all 0.2s; position: relative;
+    background: transparent; cursor: pointer; display: flex; align-items: center;
+    justify-content: center; flex-shrink: 0; transition: all 0.2s; position: relative;
   }
   .option-radio::after { content: ''; position: absolute; inset: -10px; }
   .option-radio:hover { border-color: var(--blue); }
@@ -280,6 +300,45 @@
   <div class="footer-total" id="grand-total">$0</div>
 </div>
 
+<!-- Settings modal -->
+<div id="settings-modal" style="display:none" class="modal-overlay" onclick="if(event.target===this)closeSettings()">
+  <div class="modal">
+    <div class="modal-title">Settings</div>
+    <div class="modal-subtitle">Used to find local products on Google Shopping.</div>
+
+    <div class="settings-group">
+      <div class="settings-group-label">Your location</div>
+      <div class="settings-field">
+        <label>City</label>
+        <input type="text" id="s-city" placeholder="e.g. Toronto">
+      </div>
+      <div class="settings-field">
+        <label>Country</label>
+        <input type="text" id="s-country" placeholder="e.g. Canada">
+      </div>
+      <div class="settings-field">
+        <label>Postcode</label>
+        <input type="text" id="s-postcode" placeholder="e.g. M5V 0T4">
+      </div>
+    </div>
+
+    <div class="settings-group">
+      <div class="settings-group-label">SerpAPI</div>
+      <div class="settings-field">
+        <label>API Key</label>
+        <input type="password" id="s-serpkey" placeholder="Paste your SerpAPI key">
+        <div class="settings-note">Free tier: 100 searches/month. Get a key at <a href="https://serpapi.com" target="_blank" rel="noopener">serpapi.com</a></div>
+      </div>
+    </div>
+
+    <div class="modal-actions">
+      <span class="settings-saved" id="settings-saved-msg" style="display:none">Saved</span>
+      <button class="btn-cancel" onclick="closeSettings()">Close</button>
+      <button class="btn-primary" onclick="saveSettings()">Save</button>
+    </div>
+  </div>
+</div>
+
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
@@ -297,7 +356,7 @@ firebase.initializeApp({
 const auth = firebase.auth();
 const db = firebase.firestore();
 
-// ── URL helpers ──────────────────────────────────────────────────
+// ── URL helpers ───────────────────────────────────────────────────
 function getListId() { return new URLSearchParams(window.location.search).get('list'); }
 function setListId(id) {
   const url = new URL(window.location);
@@ -308,7 +367,7 @@ function generateId() {
   return Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
 }
 
-// ── Default data ─────────────────────────────────────────────────
+// ── Default data ──────────────────────────────────────────────────
 const DEFAULT_STATE = [
   { section: "Entryway", items: [
     { name: "Shoe rack / storage", basePrice: 60, on: true, links: [], selectedLink: null },
@@ -394,11 +453,13 @@ const DEFAULT_STATE = [
 
 // ── App state ─────────────────────────────────────────────────────
 let state = [];
+let settings = {};
 let openPanels = new Set();
+let loadingItems = new Set();
 let unsubscribe = null;
 let saveTimer = null;
 
-// ── Title editing ────────────────────────────────────────────────
+// ── Title editing ─────────────────────────────────────────────────
 const titleEl = document.getElementById('list-title');
 titleEl.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); titleEl.blur(); } });
 titleEl.addEventListener('blur', () => {
@@ -430,6 +491,7 @@ function renderAuthUI(user) {
     area.innerHTML = `
       <span class="auth-email">${user.email}</span>
       <button class="header-btn share-btn" id="share-btn" onclick="shareList()">Share link</button>
+      <button class="settings-btn" onclick="openSettings()" title="Settings">⚙️</button>
       <button class="header-btn signout-btn" onclick="signOut()">Sign out</button>
     `;
   } else {
@@ -441,23 +503,21 @@ auth.onAuthStateChanged(async user => {
   if (unsubscribe) { unsubscribe(); unsubscribe = null; }
   renderAuthUI(user);
 
-  if (!user) {
-    showSignIn();
-    return;
-  }
+  if (!user) { showSignIn(); return; }
 
   let listId = getListId();
-
   if (!listId) {
     listId = generateId();
     setListId(listId);
     await db.collection('lists').doc(listId).set({
       state: DEFAULT_STATE,
       title: 'Move-in Budget',
+      settings: {},
       createdAt: firebase.firestore.FieldValue.serverTimestamp(),
       createdBy: user.uid
     });
     state = JSON.parse(JSON.stringify(DEFAULT_STATE));
+    settings = {};
     showApp();
     render();
   } else {
@@ -465,6 +525,7 @@ auth.onAuthStateChanged(async user => {
     unsubscribe = db.collection('lists').doc(listId).onSnapshot(doc => {
       if (doc.metadata.hasPendingWrites) return;
       state = (doc.exists && doc.data().state) ? doc.data().state : JSON.parse(JSON.stringify(DEFAULT_STATE));
+      settings = (doc.exists && doc.data().settings) ? doc.data().settings : {};
       const t = (doc.exists && doc.data().title) || 'Move-in Budget';
       if (!titleEl.matches(':focus')) { titleEl.textContent = t; document.title = t; }
       render();
@@ -476,7 +537,7 @@ auth.onAuthStateChanged(async user => {
 function showApp() {
   document.getElementById('sticky-footer').style.display = '';
   document.getElementById('app-container').innerHTML = `
-    <p class="hint">Tap ✓ to include an item &bull; 🔗 to add purchase options &bull; Select an option to use its price</p>
+    <p class="hint">Tap ✓ to include &bull; ✨ to find options on Google Shopping &bull; 🔗 to add manually &bull; Select an option to use its price</p>
     <div id="sections"></div>
     <div class="add-section-area">
       <input type="text" id="new-section-name" placeholder="Add new section...">
@@ -507,6 +568,35 @@ function showSignIn() {
   `;
 }
 
+// ── Settings ──────────────────────────────────────────────────────
+function openSettings() {
+  document.getElementById('s-city').value = settings.city || '';
+  document.getElementById('s-country').value = settings.country || '';
+  document.getElementById('s-postcode').value = settings.postcode || '';
+  document.getElementById('s-serpkey').value = settings.serpApiKey || '';
+  document.getElementById('settings-saved-msg').style.display = 'none';
+  document.getElementById('settings-modal').style.display = 'flex';
+}
+function closeSettings() {
+  document.getElementById('settings-modal').style.display = 'none';
+}
+function saveSettings() {
+  settings = {
+    city: document.getElementById('s-city').value.trim(),
+    country: document.getElementById('s-country').value.trim(),
+    postcode: document.getElementById('s-postcode').value.trim(),
+    serpApiKey: document.getElementById('s-serpkey').value.trim()
+  };
+  const listId = getListId();
+  if (auth.currentUser && listId) {
+    db.collection('lists').doc(listId).update({ settings });
+  }
+  const msg = document.getElementById('settings-saved-msg');
+  msg.style.display = 'inline';
+  setTimeout(() => { msg.style.display = 'none'; }, 2000);
+  render();
+}
+
 // ── Save ──────────────────────────────────────────────────────────
 function scheduleSave() {
   clearTimeout(saveTimer);
@@ -518,6 +608,76 @@ function scheduleSave() {
       if (el) { el.textContent = 'Saved'; setTimeout(() => el.textContent = '', 1500); }
     }).catch(e => console.error('Save failed:', e));
   }, 600);
+}
+
+// ── Google Shopping search ────────────────────────────────────────
+const REPUTABLE_RETAILERS = [
+  'amazon', 'walmart', 'target', 'ikea', 'costco', 'home depot', 'best buy',
+  'bestbuy', 'wayfair', 'bed bath', 'canadian tire', "hudson's bay", 'the bay',
+  'london drugs', 'winners', 'homesense', 'rona', "lowe's", 'lowes',
+  'williams-sonoma', 'pottery barn', 'crate and barrel', 'west elm',
+  "sleep country", "leon's", 'the brick', 'cb2', 'structube', 'article'
+];
+
+function rankResults(results) {
+  return results
+    .map(r => {
+      const rating = r.rating || 0;
+      const reviews = r.reviews || 0;
+      const baseScore = rating * Math.log10(reviews + 1);
+      const source = (r.source || '').toLowerCase();
+      const isReputable = REPUTABLE_RETAILERS.some(ret => source.includes(ret));
+      return { ...r, _score: baseScore * (isReputable ? 1.5 : 1.0) };
+    })
+    .sort((a, b) => b._score - a._score)
+    .slice(0, 3);
+}
+
+async function searchGoogleShopping(si, ii) {
+  if (!settings.serpApiKey) {
+    openSettings();
+    return;
+  }
+  const panelKey = `${si}-${ii}`;
+  loadingItems.add(panelKey);
+  render();
+
+  try {
+    const location = [settings.city, settings.country].filter(Boolean).join(', ');
+    const params = new URLSearchParams({
+      engine: 'google_shopping',
+      q: state[si].items[ii].name,
+      num: '10',
+      tbs: 'p_ord:rv',
+      api_key: settings.serpApiKey
+    });
+    if (location) params.set('location', location);
+
+    const res = await fetch(`https://serpapi.com/search.json?${params}`);
+    if (!res.ok) throw new Error(`SerpAPI ${res.status}`);
+    const data = await res.json();
+
+    const top3 = rankResults(data.shopping_results || []);
+    if (!top3.length) throw new Error('No results found');
+
+    if (!state[si].items[ii].links) state[si].items[ii].links = [];
+    top3.forEach(r => {
+      state[si].items[ii].links.push({
+        label: r.title,
+        url: r.link || '',
+        brand: r.source || '',
+        price: Math.round(r.extracted_price || 0)
+      });
+    });
+
+    openPanels.add(panelKey);
+    scheduleSave();
+  } catch (err) {
+    console.error('Search failed:', err);
+  } finally {
+    loadingItems.delete(panelKey);
+    render();
+  }
 }
 
 // ── Render ────────────────────────────────────────────────────────
@@ -580,15 +740,11 @@ function render() {
 
       const metaEl = document.createElement('div');
       metaEl.className = 'item-meta';
-
       const selectedUrl = item.selectedLink !== null && item.links[item.selectedLink]?.url
         ? item.links[item.selectedLink].url : null;
-
       if (selectedUrl) {
         const nameLink = document.createElement('a');
-        nameLink.href = selectedUrl;
-        nameLink.target = '_blank';
-        nameLink.rel = 'noopener noreferrer';
+        nameLink.href = selectedUrl; nameLink.target = '_blank'; nameLink.rel = 'noopener noreferrer';
         nameLink.className = 'item-name-link' + (item.on ? '' : ' skipped');
         nameLink.textContent = item.name;
         metaEl.appendChild(nameLink);
@@ -598,8 +754,7 @@ function render() {
         nameEl.className = 'item-name-input' + (item.on ? '' : ' skipped');
         nameEl.value = item.name;
         nameEl.addEventListener('change', e => {
-          state[si].items[ii].name = e.target.value.trim() || item.name;
-          scheduleSave();
+          state[si].items[ii].name = e.target.value.trim() || item.name; scheduleSave();
         });
         metaEl.appendChild(nameEl);
       }
@@ -611,18 +766,27 @@ function render() {
       baseInput.className = 'base-price-input' + (item.selectedLink !== null ? ' overridden' : '');
       baseInput.value = item.basePrice || 0;
       baseInput.addEventListener('change', e => {
-        state[si].items[ii].basePrice = parseInt(e.target.value) || 0;
-        updateTotal(); scheduleSave();
+        state[si].items[ii].basePrice = parseInt(e.target.value) || 0; updateTotal(); scheduleSave();
       });
       basePriceWrap.appendChild(baseInput);
+
+      // Search button
+      const isLoading = loadingItems.has(panelKey);
+      const hasSettings = !!settings.serpApiKey;
+      const searchBtn = document.createElement('button');
+      searchBtn.className = 'icon-btn search-btn' + (isLoading ? ' loading' : '');
+      searchBtn.innerHTML = `<span>✨</span>`;
+      searchBtn.title = hasSettings ? 'Find options on Google Shopping' : 'Add your SerpAPI key in Settings first';
+      searchBtn.disabled = isLoading;
+      if (!hasSettings) searchBtn.disabled = true;
+      searchBtn.onclick = () => searchGoogleShopping(si, ii);
 
       const linkBtn = document.createElement('button');
       linkBtn.className = 'icon-btn link-btn' + ((item.links && item.links.length) ? ' has-links' : '');
       linkBtn.innerHTML = '&#128279;';
       linkBtn.title = 'Purchase options';
       linkBtn.onclick = () => {
-        openPanels.has(panelKey) ? openPanels.delete(panelKey) : openPanels.add(panelKey);
-        render();
+        openPanels.has(panelKey) ? openPanels.delete(panelKey) : openPanels.add(panelKey); render();
       };
 
       const delBtn = document.createElement('button');
@@ -631,12 +795,12 @@ function render() {
       delBtn.onclick = () => { state[si].items.splice(ii, 1); openPanels.delete(panelKey); scheduleSave(); render(); };
 
       row.appendChild(toggle); row.appendChild(metaEl); row.appendChild(basePriceWrap);
-      row.appendChild(linkBtn); row.appendChild(delBtn);
+      row.appendChild(searchBtn); row.appendChild(linkBtn); row.appendChild(delBtn);
       wrap.appendChild(row);
 
+      // Links panel
       const panel = document.createElement('div');
       panel.className = 'links-panel' + (openPanels.has(panelKey) ? ' open' : '');
-
       const panelTitle = document.createElement('div');
       panelTitle.className = 'links-panel-title';
       panelTitle.textContent = 'Purchase options — select one to use its price';
@@ -649,52 +813,41 @@ function render() {
 
         const radio = document.createElement('div');
         radio.className = 'option-radio' + (isSelected ? ' selected' : '');
-        radio.onclick = () => {
-          state[si].items[ii].selectedLink = isSelected ? null : li;
-          scheduleSave(); render();
-        };
+        radio.onclick = () => { state[si].items[ii].selectedLink = isSelected ? null : li; scheduleSave(); render(); };
 
         const info = document.createElement('div');
         info.className = 'option-info';
         if (link.url) {
           const a = document.createElement('a');
-          a.className = 'option-label-link';
-          a.href = link.url; a.target = '_blank'; a.rel = 'noopener noreferrer';
+          a.className = 'option-label-link'; a.href = link.url; a.target = '_blank'; a.rel = 'noopener noreferrer';
           a.textContent = link.label || link.url; a.title = link.url;
           info.appendChild(a);
         } else {
           const span = document.createElement('span');
-          span.className = 'option-label-nolink';
-          span.textContent = link.label || 'Option';
+          span.className = 'option-label-nolink'; span.textContent = link.label || 'Option';
           info.appendChild(span);
         }
         if (link.brand) {
           const brandSpan = document.createElement('span');
-          brandSpan.className = 'option-brand';
-          brandSpan.textContent = link.brand;
+          brandSpan.className = 'option-brand'; brandSpan.textContent = link.brand;
           info.appendChild(brandSpan);
         }
 
         const optPriceWrap = document.createElement('div');
         optPriceWrap.className = 'option-price-wrap';
         const optPrice = document.createElement('input');
-        optPrice.type = 'number';
-        optPrice.className = 'option-price-input';
-        optPrice.value = link.price || 0;
+        optPrice.type = 'number'; optPrice.className = 'option-price-input'; optPrice.value = link.price || 0;
         optPrice.addEventListener('change', e => {
-          state[si].items[ii].links[li].price = parseInt(e.target.value) || 0;
-          updateTotal(); scheduleSave();
+          state[si].items[ii].links[li].price = parseInt(e.target.value) || 0; updateTotal(); scheduleSave();
         });
         optPriceWrap.appendChild(optPrice);
 
         const badge = document.createElement('span');
-        badge.className = 'selected-badge';
-        badge.textContent = 'Selected';
+        badge.className = 'selected-badge'; badge.textContent = 'Selected';
         badge.style.visibility = isSelected ? 'visible' : 'hidden';
 
         const delLink = document.createElement('button');
-        delLink.className = 'link-del-btn';
-        delLink.innerHTML = '&times;';
+        delLink.className = 'link-del-btn'; delLink.innerHTML = '&times;';
         delLink.onclick = () => {
           state[si].items[ii].links.splice(li, 1);
           if (item.selectedLink === li) state[si].items[ii].selectedLink = null;
@@ -709,31 +862,24 @@ function render() {
 
       const addForm = document.createElement('div');
       addForm.className = 'add-link-form';
-
       const labelField = document.createElement('div'); labelField.className = 'add-link-field';
       const labelLbl = document.createElement('label'); labelLbl.textContent = 'Label';
       const labelIn = document.createElement('input'); labelIn.type = 'text'; labelIn.placeholder = 'e.g. IKEA option'; labelIn.maxLength = 50;
       labelField.appendChild(labelLbl); labelField.appendChild(labelIn);
-
       const urlField = document.createElement('div'); urlField.className = 'add-link-field';
       const urlLbl = document.createElement('label'); urlLbl.textContent = 'URL (optional)';
       const urlIn = document.createElement('input'); urlIn.type = 'text'; urlIn.placeholder = 'https://...';
       urlField.appendChild(urlLbl); urlField.appendChild(urlIn);
-
       const brandField = document.createElement('div'); brandField.className = 'add-link-field';
       const brandLbl = document.createElement('label'); brandLbl.textContent = 'Brand (optional)';
       const brandIn = document.createElement('input'); brandIn.type = 'text'; brandIn.placeholder = 'e.g. IKEA'; brandIn.maxLength = 40;
       brandField.appendChild(brandLbl); brandField.appendChild(brandIn);
-
       const priceField = document.createElement('div'); priceField.className = 'add-link-field';
       const priceLbl = document.createElement('label'); priceLbl.textContent = 'Price $';
       const priceIn = document.createElement('input'); priceIn.type = 'number'; priceIn.placeholder = '0';
       priceField.appendChild(priceLbl); priceField.appendChild(priceIn);
-
       const addLinkBtn = document.createElement('button');
-      addLinkBtn.className = 'add-link-btn';
-      addLinkBtn.textContent = '+ Save';
-
+      addLinkBtn.className = 'add-link-btn'; addLinkBtn.textContent = '+ Save';
       const doAddLink = () => {
         const label = labelIn.value.trim();
         if (!label) { labelIn.focus(); return; }
@@ -745,13 +891,11 @@ function render() {
         state[si].items[ii].links.push({ label, url, brand, price });
         scheduleSave(); render();
       };
-
       addLinkBtn.onclick = doAddLink;
       labelIn.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); urlIn.focus(); } });
       urlIn.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); brandIn.focus(); } });
       brandIn.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); priceIn.focus(); } });
       priceIn.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); doAddLink(); } });
-
       addForm.appendChild(labelField); addForm.appendChild(urlField);
       addForm.appendChild(brandField); addForm.appendChild(priceField); addForm.appendChild(addLinkBtn);
       panel.appendChild(addForm);
@@ -767,7 +911,6 @@ function render() {
     priceIn.type = 'number'; priceIn.placeholder = '$0';
     const addBtn = document.createElement('button');
     addBtn.className = 'add-item-btn'; addBtn.textContent = '+';
-
     const doAdd = () => {
       const n = nameIn.value.trim();
       if (!n) { nameIn.focus(); return; }
@@ -777,7 +920,6 @@ function render() {
     addBtn.onclick = doAdd;
     nameIn.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); priceIn.focus(); } });
     priceIn.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); doAdd(); } });
-
     addRow.appendChild(nameIn); addRow.appendChild(priceIn); addRow.appendChild(addBtn);
     card.appendChild(addRow);
     div.appendChild(card);
