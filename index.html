@@ -66,12 +66,26 @@
   @supports not (backdrop-filter: blur(1px)) {
     .app-header { background: var(--bg); }
   }
-  .app-header-inner { max-width: 680px; margin: 0 auto; display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
-  .app-title { font-size: clamp(1.5rem, 5vw, 2rem); font-weight: 700; letter-spacing: -0.03em; color: var(--ink); }
-  .app-subtitle { font-size: 13px; color: var(--muted); }
+  .app-header-inner { max-width: 680px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .app-title { font-size: clamp(1.5rem, 5vw, 2rem); font-weight: 700; letter-spacing: -0.03em; color: var(--ink); flex-shrink: 0; }
+
+  .auth-area { display: flex; align-items: center; gap: 8px; }
+  .auth-email { font-size: 12px; color: var(--muted); max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .header-btn { font-size: 13px; font-weight: 600; border: none; border-radius: 20px; padding: 6px 14px; cursor: pointer; font-family: inherit; white-space: nowrap; transition: opacity 0.15s; }
+  .header-btn:hover { opacity: 0.75; }
+  .share-btn { color: var(--ink2); background: var(--surface2); }
+  .signin-btn { color: var(--blue); background: var(--blue-bg); }
+  .signout-btn { color: var(--muted); background: var(--surface2); font-weight: 400; font-size: 12px; }
 
   .container { max-width: 680px; margin: 0 auto; padding: 24px 16px 0; }
   .hint { font-size: 13px; color: var(--muted); margin-bottom: 20px; padding: 0 4px; }
+
+  /* ── Sign-in screen ── */
+  .signin-screen { display: flex; flex-direction: column; align-items: center; padding: 80px 20px; text-align: center; }
+  .signin-screen h2 { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 8px; }
+  .signin-screen p { font-size: 15px; color: var(--muted); margin-bottom: 32px; max-width: 280px; line-height: 1.5; }
+  .google-btn { display: flex; align-items: center; gap: 10px; background: var(--surface); border: 1.5px solid var(--line); border-radius: 12px; padding: 13px 24px; font-size: 15px; font-weight: 600; font-family: inherit; cursor: pointer; color: var(--ink); transition: background 0.15s; }
+  .google-btn:hover { background: var(--surface2); }
 
   /* ── Section ── */
   .section { margin-bottom: 32px; }
@@ -249,20 +263,13 @@
 <div class="app-header">
   <div class="app-header-inner">
     <div class="app-title">Move-in Budget</div>
-    
+    <div class="auth-area" id="auth-area"></div>
   </div>
 </div>
 
-<div class="container">
-  <p class="hint">Tap ✓ to include an item &bull; 🔗 to add purchase options &bull; Select an option to use its price</p>
-  <div id="sections"></div>
-  <div class="add-section-area">
-    <input type="text" id="new-section-name" placeholder="Add new section...">
-    <button class="add-section-btn" onclick="addSection()">Add</button>
-  </div>
-</div>
+<div class="container" id="app-container"></div>
 
-<div class="sticky-footer">
+<div class="sticky-footer" id="sticky-footer" style="display:none">
   <div class="footer-left">
     <div class="footer-label">Estimated Total</div>
     <div class="footer-sub" id="item-count"></div>
@@ -271,7 +278,35 @@
   <div class="footer-total" id="grand-total">$0</div>
 </div>
 
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+
 <script>
+// Firebase API key is safe to expose in public repos — security is enforced by Firestore rules
+firebase.initializeApp({
+  apiKey: "AIzaSyAdRKzaFGmgwuDDJnfLI8aLW-cIWAtibXY",
+  authDomain: "shopping-list-b85f6.firebaseapp.com",
+  projectId: "shopping-list-b85f6",
+  storageBucket: "shopping-list-b85f6.firebasestorage.app",
+  messagingSenderId: "233044276059",
+  appId: "1:233044276059:web:54e0546d0b6d3f612ae07e"
+});
+const auth = firebase.auth();
+const db = firebase.firestore();
+
+// ── URL helpers ──────────────────────────────────────────────────
+function getListId() { return new URLSearchParams(window.location.search).get('list'); }
+function setListId(id) {
+  const url = new URL(window.location);
+  url.searchParams.set('list', id);
+  window.history.replaceState({}, '', url);
+}
+function generateId() {
+  return Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
+}
+
+// ── Default data ─────────────────────────────────────────────────
 const DEFAULT_STATE = [
   { section: "Entryway", items: [
     { name: "Shoe rack / storage", basePrice: 60, on: true, links: [], selectedLink: null },
@@ -355,29 +390,121 @@ const DEFAULT_STATE = [
   ]}
 ];
 
-function loadState() {
-  try {
-    const saved = localStorage.getItem('moveInBudgetV3');
-    if (saved) return JSON.parse(saved);
-  } catch(e) {}
-  return JSON.parse(JSON.stringify(DEFAULT_STATE));
+// ── App state ─────────────────────────────────────────────────────
+let state = [];
+let openPanels = new Set();
+let unsubscribe = null;
+let saveTimer = null;
+
+// ── Auth ──────────────────────────────────────────────────────────
+function signIn() {
+  auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()).catch(e => console.error(e));
+}
+function signOut() { auth.signOut(); }
+
+function shareList() {
+  navigator.clipboard.writeText(window.location.href).then(() => {
+    const btn = document.getElementById('share-btn');
+    if (!btn) return;
+    btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = 'Share link', 2000);
+  });
 }
 
-let state = loadState();
-let openPanels = new Set();
+function renderAuthUI(user) {
+  const area = document.getElementById('auth-area');
+  if (user) {
+    area.innerHTML = `
+      <span class="auth-email">${user.email}</span>
+      <button class="header-btn share-btn" id="share-btn" onclick="shareList()">Share link</button>
+      <button class="header-btn signout-btn" onclick="signOut()">Sign out</button>
+    `;
+  } else {
+    area.innerHTML = `<button class="header-btn signin-btn" onclick="signIn()">Sign in</button>`;
+  }
+}
 
-let saveTimer = null;
+auth.onAuthStateChanged(async user => {
+  if (unsubscribe) { unsubscribe(); unsubscribe = null; }
+  renderAuthUI(user);
+
+  if (!user) {
+    showSignIn();
+    return;
+  }
+
+  let listId = getListId();
+
+  if (!listId) {
+    listId = generateId();
+    setListId(listId);
+    await db.collection('lists').doc(listId).set({
+      state: DEFAULT_STATE,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      createdBy: user.uid
+    });
+    state = JSON.parse(JSON.stringify(DEFAULT_STATE));
+    showApp();
+    render();
+  } else {
+    showApp();
+    unsubscribe = db.collection('lists').doc(listId).onSnapshot(doc => {
+      if (doc.metadata.hasPendingWrites) return;
+      state = (doc.exists && doc.data().state) ? doc.data().state : JSON.parse(JSON.stringify(DEFAULT_STATE));
+      render();
+    }, err => console.error('Firestore:', err));
+  }
+});
+
+// ── Screens ───────────────────────────────────────────────────────
+function showApp() {
+  document.getElementById('sticky-footer').style.display = '';
+  document.getElementById('app-container').innerHTML = `
+    <p class="hint">Tap ✓ to include an item &bull; 🔗 to add purchase options &bull; Select an option to use its price</p>
+    <div id="sections"></div>
+    <div class="add-section-area">
+      <input type="text" id="new-section-name" placeholder="Add new section...">
+      <button class="add-section-btn" onclick="addSection()">Add</button>
+    </div>
+  `;
+  document.getElementById('new-section-name').addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); addSection(); }
+  });
+}
+
+function showSignIn() {
+  document.getElementById('sticky-footer').style.display = 'none';
+  document.getElementById('app-container').innerHTML = `
+    <div class="signin-screen">
+      <h2>Move-in Budget</h2>
+      <p>Sign in to save your list to the cloud and share it with your partner.</p>
+      <button class="google-btn" onclick="signIn()">
+        <svg width="18" height="18" viewBox="0 0 48 48">
+          <path fill="#FFC107" d="M43.611 20.083H42V20H24v8h11.303c-1.649 4.657-6.08 8-11.303 8c-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4C12.955 4 4 12.955 4 24s8.955 20 20 20s20-8.955 20-20c0-1.341-.138-2.65-.389-3.917"/>
+          <path fill="#FF3D00" d="m6.306 14.691l6.571 4.819C14.655 15.108 18.961 12 24 12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4C16.318 4 9.656 8.337 6.306 14.691"/>
+          <path fill="#4CAF50" d="M24 44c5.166 0 9.86-1.977 13.409-5.192l-6.19-5.238A11.91 11.91 0 0 1 24 36c-5.202 0-9.619-3.317-11.283-7.946l-6.522 5.025C9.505 39.556 16.227 44 24 44"/>
+          <path fill="#1976D2" d="M43.611 20.083H42V20H24v8h11.303a12.04 12.04 0 0 1-4.087 5.571l.003-.002l6.19 5.238C36.971 39.205 44 34 44 24c0-1.341-.138-2.65-.389-3.917"/>
+        </svg>
+        Sign in with Google
+      </button>
+    </div>
+  `;
+}
+
+// ── Save ──────────────────────────────────────────────────────────
 function scheduleSave() {
   clearTimeout(saveTimer);
   saveTimer = setTimeout(() => {
-    try {
-      localStorage.setItem('moveInBudgetV3', JSON.stringify(state));
+    const listId = getListId();
+    if (!auth.currentUser || !listId) return;
+    db.collection('lists').doc(listId).update({ state }).then(() => {
       const el = document.getElementById('save-indicator');
       if (el) { el.textContent = 'Saved'; setTimeout(() => el.textContent = '', 1500); }
-    } catch(e) {}
+    }).catch(e => console.error('Save failed:', e));
   }, 600);
 }
 
+// ── Render ────────────────────────────────────────────────────────
 function effectivePrice(item) {
   if (item.selectedLink !== null && item.links && item.links[item.selectedLink] != null) {
     return item.links[item.selectedLink].price || 0;
@@ -386,21 +513,24 @@ function effectivePrice(item) {
 }
 
 function updateTotal() {
+  const totalEl = document.getElementById('grand-total');
+  const countEl = document.getElementById('item-count');
+  if (!totalEl || !countEl) return;
   let total = 0, count = 0;
   state.forEach(s => s.items.forEach(i => { if (i.on) { total += effectivePrice(i); count++; } }));
-  document.getElementById('grand-total').textContent = '$' + total.toLocaleString();
-  document.getElementById('item-count').textContent = count + ' items included';
+  totalEl.textContent = '$' + total.toLocaleString();
+  countEl.textContent = count + ' items included';
 }
 
 function render() {
   const container = document.getElementById('sections');
+  if (!container) return;
   container.innerHTML = '';
 
   state.forEach((section, si) => {
     const div = document.createElement('div');
     div.className = 'section';
 
-    // Section header
     const hdr = document.createElement('div');
     hdr.className = 'section-header';
     const lbl = document.createElement('div');
@@ -424,17 +554,14 @@ function render() {
       const wrap = document.createElement('div');
       wrap.className = 'item-wrap';
 
-      // Main row
       const row = document.createElement('div');
       row.className = 'item';
 
-      // Toggle
       const toggle = document.createElement('button');
       toggle.className = 'item-toggle' + (item.on ? ' active' : '');
       toggle.textContent = item.on ? '✓' : '';
       toggle.onclick = () => { state[si].items[ii].on = !item.on; scheduleSave(); render(); };
 
-      // Name (link if option selected, input otherwise)
       const metaEl = document.createElement('div');
       metaEl.className = 'item-meta';
 
@@ -461,7 +588,6 @@ function render() {
         metaEl.appendChild(nameEl);
       }
 
-      // Base price
       const basePriceWrap = document.createElement('div');
       basePriceWrap.className = 'base-price-wrap';
       const baseInput = document.createElement('input');
@@ -474,7 +600,6 @@ function render() {
       });
       basePriceWrap.appendChild(baseInput);
 
-      // Link button
       const linkBtn = document.createElement('button');
       linkBtn.className = 'icon-btn link-btn' + ((item.links && item.links.length) ? ' has-links' : '');
       linkBtn.innerHTML = '&#128279;';
@@ -484,7 +609,6 @@ function render() {
         render();
       };
 
-      // Delete button
       const delBtn = document.createElement('button');
       delBtn.className = 'icon-btn delete';
       delBtn.innerHTML = '&times;';
@@ -494,7 +618,6 @@ function render() {
       row.appendChild(linkBtn); row.appendChild(delBtn);
       wrap.appendChild(row);
 
-      // Links panel
       const panel = document.createElement('div');
       panel.className = 'links-panel' + (openPanels.has(panelKey) ? ' open' : '');
 
@@ -568,7 +691,6 @@ function render() {
         panel.appendChild(optRow);
       });
 
-      // Add link form
       const addForm = document.createElement('div');
       addForm.className = 'add-link-form';
 
@@ -621,7 +743,6 @@ function render() {
       card.appendChild(wrap);
     });
 
-    // Add item row
     const addRow = document.createElement('div');
     addRow.className = 'add-item-row';
     const nameIn = document.createElement('input');
@@ -661,12 +782,6 @@ function addSection() {
     if (secs.length) secs[secs.length - 1].scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, 50);
 }
-
-document.getElementById('new-section-name').addEventListener('keydown', e => {
-  if (e.key === 'Enter') { e.preventDefault(); addSection(); }
-});
-
-render();
 </script>
 </body>
 </html>
