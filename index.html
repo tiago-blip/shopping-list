@@ -303,6 +303,30 @@
   .footer-sub { font-size: 12px; color: var(--muted); }
   .footer-save { font-size: 11px; color: var(--green); font-weight: 500; }
   .footer-total { font-size: 2rem; font-weight: 700; letter-spacing: -0.03em; color: var(--ink); font-variant-numeric: tabular-nums; }
+
+  /* ── Homepage ── */
+  .lists-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; padding: 4px 0 24px; }
+  .list-card { background: var(--surface); border-radius: var(--radius); padding: 20px; cursor: pointer; transition: transform 0.15s, box-shadow 0.15s; display: flex; flex-direction: column; gap: 4px; }
+  .list-card:hover { transform: translateY(-2px); box-shadow: 0 4px 24px rgba(0,0,0,0.09); }
+  .list-card-title { font-size: 16px; font-weight: 600; letter-spacing: -0.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .list-card-date { font-size: 12px; color: var(--muted); margin-bottom: 12px; }
+  .list-card-footer { display: flex; justify-content: space-between; align-items: center; margin-top: auto; }
+  .list-card-open { font-size: 13px; font-weight: 600; color: var(--blue); }
+  .list-card-archive { font-size: 12px; color: var(--muted); background: none; border: none; cursor: pointer; padding: 0; font-family: inherit; transition: color 0.15s; }
+  .list-card-archive:hover { color: var(--red); }
+  .new-list-card { background: transparent; border: 2px dashed rgba(0,122,255,0.25); border-radius: var(--radius); padding: 20px; cursor: pointer; font-family: inherit; font-size: 15px; font-weight: 600; color: var(--blue); transition: all 0.15s; text-align: center; min-height: 100px; display: flex; align-items: center; justify-content: center; }
+  .new-list-card:hover { background: var(--blue-bg); border-color: var(--blue); }
+  .homepage-empty { display: flex; flex-direction: column; align-items: center; padding: 80px 20px; text-align: center; }
+  .homepage-empty h2 { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 8px; }
+  .homepage-empty p { font-size: 15px; color: var(--muted); margin-bottom: 32px; }
+
+  .back-btn { color: var(--ink2); background: var(--surface2); }
+
+  /* ── Open URL button in link options ── */
+  .option-label-row { display: flex; align-items: center; gap: 4px; min-width: 0; }
+  .option-label-row .option-label-input { flex: 1; }
+  .option-open-url { color: var(--muted); font-size: 12px; text-decoration: none; flex-shrink: 0; padding: 2px 3px; border-radius: 4px; transition: color 0.15s; line-height: 1; }
+  .option-open-url:hover { color: var(--blue); }
 </style>
 </head>
 <body>
@@ -481,6 +505,7 @@ let loadingItems = new Set();
 let errorItems = new Set();
 let history = [];
 let unsubscribe = null;
+let homeUnsubscribe = null;
 let saveTimer = null;
 
 // ── Title editing ─────────────────────────────────────────────────
@@ -491,7 +516,10 @@ titleEl.addEventListener('blur', () => {
   titleEl.textContent = title;
   document.title = title;
   const listId = getListId();
-  if (auth.currentUser && listId) db.collection('lists').doc(listId).update({ title });
+  if (auth.currentUser && listId) {
+    db.collection('lists').doc(listId).update({ title });
+    registerListForUser(auth.currentUser.uid, listId, title);
+  }
 });
 
 // ── Auth ──────────────────────────────────────────────────────────
@@ -509,16 +537,24 @@ function shareList() {
   });
 }
 
-function renderAuthUI(user) {
+function renderAuthUI(user, isHomepage = false) {
   const area = document.getElementById('auth-area');
   if (user) {
-    area.innerHTML = `
-      <span class="auth-email">${user.email}</span>
-      <button class="undo-btn" id="undo-btn" onclick="undo()" style="display:none" title="Undo last deletion (⌘Z)">↩ Undo</button>
-      <button class="header-btn share-btn" id="share-btn" onclick="shareList()">Share link</button>
-      <button class="settings-btn" onclick="openSettings()" title="Settings">⚙️</button>
-      <button class="header-btn signout-btn" onclick="signOut()">Sign out</button>
-    `;
+    if (isHomepage) {
+      area.innerHTML = `
+        <span class="auth-email">${user.email}</span>
+        <button class="header-btn signout-btn" onclick="signOut()">Sign out</button>
+      `;
+    } else {
+      area.innerHTML = `
+        <span class="auth-email">${user.email}</span>
+        <button class="undo-btn" id="undo-btn" onclick="undo()" style="display:none" title="Undo last deletion (⌘Z)">↩ Undo</button>
+        <button class="header-btn back-btn" onclick="goHome()">← Lists</button>
+        <button class="header-btn share-btn" id="share-btn" onclick="shareList()">Share link</button>
+        <button class="settings-btn" onclick="openSettings()" title="Settings">⚙️</button>
+        <button class="header-btn signout-btn" onclick="signOut()">Sign out</button>
+      `;
+    }
   } else {
     area.innerHTML = `<button class="header-btn signin-btn" onclick="signIn()">Sign in</button>`;
   }
@@ -526,37 +562,36 @@ function renderAuthUI(user) {
 
 auth.onAuthStateChanged(async user => {
   if (unsubscribe) { unsubscribe(); unsubscribe = null; }
-  renderAuthUI(user);
+  if (homeUnsubscribe) { homeUnsubscribe(); homeUnsubscribe = null; }
 
-  if (!user) { showSignIn(); return; }
+  if (!user) { renderAuthUI(null); showSignIn(); return; }
 
-  let listId = getListId();
+  const listId = getListId();
   if (!listId) {
-    listId = generateId();
-    setListId(listId);
-    await db.collection('lists').doc(listId).set({
-      state: DEFAULT_STATE,
-      title: 'Move-in Budget',
-      settings: {},
-      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-      createdBy: user.uid
-    });
-    state = JSON.parse(JSON.stringify(DEFAULT_STATE));
-    settings = {};
-    showApp();
-    render();
+    renderAuthUI(user, true);
+    titleEl.contentEditable = 'false';
+    titleEl.textContent = 'My Lists';
+    document.title = 'My Lists';
+    showHomepage(user.uid);
   } else {
-    showApp();
-    unsubscribe = db.collection('lists').doc(listId).onSnapshot(doc => {
-      if (doc.metadata.hasPendingWrites) return;
-      state = (doc.exists && doc.data().state) ? doc.data().state : JSON.parse(JSON.stringify(DEFAULT_STATE));
-      settings = (doc.exists && doc.data().settings) ? doc.data().settings : {};
-      const t = (doc.exists && doc.data().title) || 'Move-in Budget';
-      if (!titleEl.matches(':focus')) { titleEl.textContent = t; document.title = t; }
-      render();
-    }, err => console.error('Firestore:', err));
+    renderAuthUI(user, false);
+    loadList(user, listId);
   }
 });
+
+function loadList(user, listId) {
+  titleEl.contentEditable = 'true';
+  showApp();
+  unsubscribe = db.collection('lists').doc(listId).onSnapshot(async doc => {
+    if (doc.metadata.hasPendingWrites) return;
+    state = (doc.exists && doc.data().state) ? doc.data().state : JSON.parse(JSON.stringify(DEFAULT_STATE));
+    settings = (doc.exists && doc.data().settings) ? doc.data().settings : {};
+    const t = (doc.exists && doc.data().title) || 'Move-in Budget';
+    if (!titleEl.matches(':focus')) { titleEl.textContent = t; document.title = t; }
+    await registerListForUser(user.uid, listId, t);
+    render();
+  }, err => console.error('Firestore:', err));
+}
 
 // ── Screens ───────────────────────────────────────────────────────
 function showApp() {
@@ -593,12 +628,142 @@ function showSignIn() {
   `;
 }
 
+// ── Homepage ──────────────────────────────────────────────────────
+function goHome() {
+  if (unsubscribe) { unsubscribe(); unsubscribe = null; }
+  const url = new URL(window.location);
+  url.searchParams.delete('list');
+  window.history.replaceState({}, '', url);
+  const user = auth.currentUser;
+  if (!user) return;
+  renderAuthUI(user, true);
+  titleEl.contentEditable = 'false';
+  titleEl.textContent = 'My Lists';
+  document.title = 'My Lists';
+  document.getElementById('sticky-footer').style.display = 'none';
+  showHomepage(user.uid);
+}
+
+function showHomepage(uid) {
+  document.getElementById('sticky-footer').style.display = 'none';
+  document.getElementById('app-container').innerHTML = '<div class="container" id="homepage-container"></div>';
+  if (homeUnsubscribe) { homeUnsubscribe(); homeUnsubscribe = null; }
+  homeUnsubscribe = db.collection('users').doc(uid).collection('lists')
+    .onSnapshot(snap => {
+      renderHomepage(uid, snap.docs.map(d => d.data()));
+    }, err => console.error('Homepage:', err));
+}
+
+function renderHomepage(uid, lists) {
+  const container = document.getElementById('homepage-container');
+  if (!container) return;
+  container.innerHTML = '';
+
+  if (!lists.length) {
+    const empty = document.createElement('div');
+    empty.className = 'homepage-empty';
+    empty.innerHTML = `
+      <h2>No lists yet</h2>
+      <p>Create your first list to get started.</p>
+    `;
+    const btn = document.createElement('button');
+    btn.className = 'btn-primary';
+    btn.textContent = 'Create list';
+    btn.onclick = () => createNewList(uid);
+    empty.appendChild(btn);
+    container.appendChild(empty);
+    return;
+  }
+
+  const grid = document.createElement('div');
+  grid.className = 'lists-grid';
+  grid.style.marginTop = '24px';
+
+  lists.forEach(list => {
+    const card = document.createElement('div');
+    card.className = 'list-card';
+    const dateStr = list.createdAt?.toDate
+      ? list.createdAt.toDate().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+      : '';
+    const titleDiv = document.createElement('div');
+    titleDiv.className = 'list-card-title';
+    titleDiv.textContent = list.title || 'Untitled';
+    const dateDiv = document.createElement('div');
+    dateDiv.className = 'list-card-date';
+    dateDiv.textContent = dateStr;
+    const footer = document.createElement('div');
+    footer.className = 'list-card-footer';
+    const openSpan = document.createElement('span');
+    openSpan.className = 'list-card-open';
+    openSpan.textContent = 'Open →';
+    const archiveBtn = document.createElement('button');
+    archiveBtn.className = 'list-card-archive';
+    archiveBtn.textContent = 'Archive';
+    archiveBtn.onclick = (e) => { e.stopPropagation(); archiveList(uid, list.listId); };
+    footer.appendChild(openSpan);
+    footer.appendChild(archiveBtn);
+    card.appendChild(titleDiv);
+    card.appendChild(dateDiv);
+    card.appendChild(footer);
+    card.onclick = () => openList(list.listId);
+    grid.appendChild(card);
+  });
+
+  const newCard = document.createElement('button');
+  newCard.className = 'new-list-card';
+  newCard.textContent = '+ New list';
+  newCard.onclick = () => createNewList(uid);
+  grid.appendChild(newCard);
+
+  container.appendChild(grid);
+}
+
+async function registerListForUser(uid, listId, title) {
+  const ref = db.collection('users').doc(uid).collection('lists').doc(listId);
+  const doc = await ref.get();
+  if (!doc.exists) {
+    await ref.set({ title, listId, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+  } else if (doc.data().title !== title) {
+    await ref.update({ title });
+  }
+}
+
+async function createNewList(uid) {
+  const listId = generateId();
+  const title = 'New List';
+  await db.collection('lists').doc(listId).set({
+    state: DEFAULT_STATE,
+    title,
+    settings: {},
+    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+    createdBy: uid
+  });
+  await db.collection('users').doc(uid).collection('lists').doc(listId).set({
+    title, listId, createdAt: firebase.firestore.FieldValue.serverTimestamp()
+  });
+  openList(listId);
+}
+
+function openList(listId) {
+  if (homeUnsubscribe) { homeUnsubscribe(); homeUnsubscribe = null; }
+  setListId(listId);
+  const user = auth.currentUser;
+  if (!user) return;
+  renderAuthUI(user, false);
+  loadList(user, listId);
+}
+
+function archiveList(uid, listId) {
+  if (!confirm('Remove this list from your homepage? The list data is not deleted.')) return;
+  db.collection('users').doc(uid).collection('lists').doc(listId).delete()
+    .catch(e => console.error('Archive failed:', e));
+}
+
 // ── Settings ──────────────────────────────────────────────────────
 function openSettings() {
   document.getElementById('s-city').value = settings.city || '';
   document.getElementById('s-country').value = settings.country || '';
   document.getElementById('s-postcode').value = settings.postcode || '';
-  document.getElementById('s-serpkey').value = settings.serpApiKey || '';
   document.getElementById('settings-saved-msg').style.display = 'none';
   document.getElementById('settings-modal').style.display = 'flex';
 }
@@ -694,8 +859,10 @@ async function searchGoogleShopping(si, ii) {
 
   try {
     const location = [settings.city, settings.country].filter(Boolean).join(', ');
+    const budget = state[si].items[ii].basePrice;
     const params = new URLSearchParams({ q: state[si].items[ii].name });
     if (location) params.set('location', location);
+    if (budget) params.set('budget', budget);
 
     const res = await fetch(`https://shopping-list-mauve-six.vercel.app/api/search?${params}`);
     const data = await res.json();
@@ -885,6 +1052,8 @@ function render() {
 
         const info = document.createElement('div');
         info.className = 'option-info';
+        const labelRow = document.createElement('div');
+        labelRow.className = 'option-label-row';
         const labelInput = document.createElement('input');
         labelInput.type = 'text';
         labelInput.className = 'option-label-input' + (link.url ? ' has-url' : '');
@@ -894,7 +1063,19 @@ function render() {
           state[si].items[ii].links[li].label = e.target.value.trim(); scheduleSave();
         });
         labelInput.addEventListener('keydown', e => { if (e.key === 'Enter') e.target.blur(); });
-        info.appendChild(labelInput);
+        labelRow.appendChild(labelInput);
+        if (link.url) {
+          const openLink = document.createElement('a');
+          openLink.href = link.url;
+          openLink.target = '_blank';
+          openLink.rel = 'noopener noreferrer';
+          openLink.className = 'option-open-url';
+          openLink.title = 'Open link';
+          openLink.textContent = '↗';
+          openLink.onclick = (e) => e.stopPropagation();
+          labelRow.appendChild(openLink);
+        }
+        info.appendChild(labelRow);
         if (link.brand) {
           const brandSpan = document.createElement('span');
           brandSpan.className = 'option-brand'; brandSpan.textContent = link.brand;
