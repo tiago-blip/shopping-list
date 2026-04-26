@@ -76,6 +76,8 @@
   .signout-btn { color: var(--muted); background: var(--surface2); font-weight: 400; font-size: 12px; }
   .settings-btn { background: var(--surface2); border: none; border-radius: 20px; padding: 6px 10px; cursor: pointer; font-size: 15px; line-height: 1; transition: opacity 0.15s; }
   .settings-btn:hover { opacity: 0.75; }
+  .undo-btn { font-size: 13px; font-weight: 400; color: var(--muted); background: transparent; border: none; border-radius: 20px; padding: 6px 10px; cursor: pointer; font-family: inherit; white-space: nowrap; transition: all 0.15s; }
+  .undo-btn:hover { color: var(--ink); background: var(--surface2); }
 
   .container { max-width: 680px; margin: 0 auto; padding: 24px 16px 0; }
   .hint { font-size: 13px; color: var(--muted); margin-bottom: 20px; padding: 0 4px; }
@@ -459,6 +461,7 @@ let settings = {};
 let openPanels = new Set();
 let loadingItems = new Set();
 let errorItems = new Set();
+let history = [];
 let unsubscribe = null;
 let saveTimer = null;
 
@@ -493,6 +496,7 @@ function renderAuthUI(user) {
   if (user) {
     area.innerHTML = `
       <span class="auth-email">${user.email}</span>
+      <button class="undo-btn" id="undo-btn" onclick="undo()" style="display:none" title="Undo last deletion (⌘Z)">↩ Undo</button>
       <button class="header-btn share-btn" id="share-btn" onclick="shareList()">Share link</button>
       <button class="settings-btn" onclick="openSettings()" title="Settings">⚙️</button>
       <button class="header-btn signout-btn" onclick="signOut()">Sign out</button>
@@ -599,6 +603,35 @@ function saveSettings() {
   setTimeout(() => { msg.style.display = 'none'; }, 2000);
   render();
 }
+
+// ── Undo ──────────────────────────────────────────────────────────
+function pushHistory() {
+  history.push(JSON.stringify(state));
+  if (history.length > 20) history.shift();
+  updateUndoBtn();
+}
+
+function undo() {
+  if (!history.length) return;
+  state = JSON.parse(history.pop());
+  updateUndoBtn();
+  scheduleSave();
+  render();
+}
+
+function updateUndoBtn() {
+  const btn = document.getElementById('undo-btn');
+  if (btn) btn.style.display = history.length > 0 ? '' : 'none';
+}
+
+document.addEventListener('keydown', e => {
+  if ((e.metaKey || e.ctrlKey) && e.key === 'z') {
+    const tag = document.activeElement?.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+    if (document.activeElement?.contentEditable === 'true') return;
+    if (history.length) { e.preventDefault(); undo(); }
+  }
+});
 
 // ── Save ──────────────────────────────────────────────────────────
 function scheduleSave() {
@@ -721,7 +754,7 @@ function render() {
     delSec.textContent = 'Remove section';
     delSec.onclick = () => {
       if (!section.items.length || confirm(`Remove "${section.section}" and all its items?`)) {
-        state.splice(si, 1); scheduleSave(); render();
+        pushHistory(); state.splice(si, 1); scheduleSave(); render();
       }
     };
     hdr.appendChild(lbl); hdr.appendChild(delSec); div.appendChild(hdr);
@@ -796,7 +829,7 @@ function render() {
       const delBtn = document.createElement('button');
       delBtn.className = 'icon-btn delete';
       delBtn.innerHTML = '&times;';
-      delBtn.onclick = () => { state[si].items.splice(ii, 1); openPanels.delete(panelKey); scheduleSave(); render(); };
+      delBtn.onclick = () => { pushHistory(); state[si].items.splice(ii, 1); openPanels.delete(panelKey); scheduleSave(); render(); };
 
       const googleBtn = document.createElement('button');
       googleBtn.className = 'icon-btn google-btn';
