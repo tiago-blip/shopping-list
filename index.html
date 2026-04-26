@@ -68,6 +68,8 @@
   }
   .app-header-inner { max-width: 680px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
   .app-title { font-size: clamp(1.5rem, 5vw, 2rem); font-weight: 700; letter-spacing: -0.03em; color: var(--ink); flex-shrink: 0; }
+  #list-title { border-radius: 6px; padding: 2px 6px; margin: -2px -6px; outline: none; transition: background 0.15s; cursor: text; }
+  #list-title:hover, #list-title:focus { background: rgba(120,120,128,0.12); }
 
   .auth-area { display: flex; align-items: center; gap: 8px; }
   .auth-email { font-size: 12px; color: var(--muted); max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -262,7 +264,7 @@
 
 <div class="app-header">
   <div class="app-header-inner">
-    <div class="app-title">Move-in Budget</div>
+    <div class="app-title" id="list-title" contenteditable="true" spellcheck="false">Move-in Budget</div>
     <div class="auth-area" id="auth-area"></div>
   </div>
 </div>
@@ -396,6 +398,17 @@ let openPanels = new Set();
 let unsubscribe = null;
 let saveTimer = null;
 
+// ── Title editing ────────────────────────────────────────────────
+const titleEl = document.getElementById('list-title');
+titleEl.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); titleEl.blur(); } });
+titleEl.addEventListener('blur', () => {
+  const title = titleEl.textContent.trim() || 'Move-in Budget';
+  titleEl.textContent = title;
+  document.title = title;
+  const listId = getListId();
+  if (auth.currentUser && listId) db.collection('lists').doc(listId).update({ title });
+});
+
 // ── Auth ──────────────────────────────────────────────────────────
 function signIn() {
   auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()).catch(e => console.error(e));
@@ -440,6 +453,7 @@ auth.onAuthStateChanged(async user => {
     setListId(listId);
     await db.collection('lists').doc(listId).set({
       state: DEFAULT_STATE,
+      title: 'Move-in Budget',
       createdAt: firebase.firestore.FieldValue.serverTimestamp(),
       createdBy: user.uid
     });
@@ -451,6 +465,8 @@ auth.onAuthStateChanged(async user => {
     unsubscribe = db.collection('lists').doc(listId).onSnapshot(doc => {
       if (doc.metadata.hasPendingWrites) return;
       state = (doc.exists && doc.data().state) ? doc.data().state : JSON.parse(JSON.stringify(DEFAULT_STATE));
+      const t = (doc.exists && doc.data().title) || 'Move-in Budget';
+      if (!titleEl.matches(':focus')) { titleEl.textContent = t; document.title = t; }
       render();
     }, err => console.error('Firestore:', err));
   }
