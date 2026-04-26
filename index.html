@@ -697,7 +697,7 @@ async function searchGoogleShopping(si, ii) {
     const params = new URLSearchParams({ q: state[si].items[ii].name });
     if (location) params.set('location', location);
 
-    const res = await fetch(`/api/search?${params}`);
+    const res = await fetch(`https://shopping-list-mauve-six.vercel.app/api/search?${params}`);
     const data = await res.json();
     console.log('SerpAPI response:', data);
 
