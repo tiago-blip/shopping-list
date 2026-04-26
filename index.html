@@ -216,6 +216,9 @@
   .option-label-link { font-size: 15px; font-weight: 500; color: var(--blue); text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .option-label-link:hover { text-decoration: underline; }
   .option-label-nolink { font-size: 15px; font-weight: 500; color: var(--ink); }
+  .option-label-input { font-size: 15px; font-weight: 500; background: transparent; border: none; color: var(--ink); width: 100%; padding: 0; font-family: inherit; min-width: 0; }
+  .option-label-input.has-url { color: var(--blue); }
+  .option-label-input:focus { outline: none; }
   .option-brand { font-size: 12px; color: var(--muted); }
 
   .option-price-wrap { display: flex; align-items: center; }
@@ -892,16 +895,16 @@ function render() {
 
         const info = document.createElement('div');
         info.className = 'option-info';
-        if (link.url) {
-          const a = document.createElement('a');
-          a.className = 'option-label-link'; a.href = link.url; a.target = '_blank'; a.rel = 'noopener noreferrer';
-          a.textContent = link.label || link.url; a.title = link.url;
-          info.appendChild(a);
-        } else {
-          const span = document.createElement('span');
-          span.className = 'option-label-nolink'; span.textContent = link.label || 'Option';
-          info.appendChild(span);
-        }
+        const labelInput = document.createElement('input');
+        labelInput.type = 'text';
+        labelInput.className = 'option-label-input' + (link.url ? ' has-url' : '');
+        labelInput.value = link.label || '';
+        labelInput.placeholder = 'Label';
+        labelInput.addEventListener('change', e => {
+          state[si].items[ii].links[li].label = e.target.value.trim(); scheduleSave();
+        });
+        labelInput.addEventListener('keydown', e => { if (e.key === 'Enter') e.target.blur(); });
+        info.appendChild(labelInput);
         if (link.brand) {
           const brandSpan = document.createElement('span');
           brandSpan.className = 'option-brand'; brandSpan.textContent = link.brand;
