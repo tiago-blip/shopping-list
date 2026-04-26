@@ -1207,12 +1207,10 @@ function render() {
         urlIn.value = url;
         fetchBtn.textContent = '↻'; fetchBtn.classList.add('spinning');
         try {
-          const res = await fetch(`https://api.microlink.io/?url=${encodeURIComponent(url)}`);
+          const res = await fetch(`https://shopping-list-mauve-six.vercel.app/api/fetch?url=${encodeURIComponent(url)}`);
           const data = await res.json();
-          if (data.status === 'success') {
-            if (!labelIn.value && data.data.title) labelIn.value = data.data.title;
-            if (!brandIn.value && data.data.publisher) brandIn.value = data.data.publisher;
-          }
+          if (!labelIn.value && data.title) labelIn.value = data.title;
+          if (!brandIn.value && data.publisher) brandIn.value = data.publisher;
         } catch(e) { console.error('Fetch failed:', e); }
         finally { fetchBtn.textContent = '↗'; fetchBtn.classList.remove('spinning'); }
       };
