@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Move-In Budget</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #f2f2f7;
+    --surface: #ffffff;
+    --surface2: #f2f2f7;
+    --ink: #1c1c1e;
+    --ink2: #3a3a3c;
+    --muted: #8e8e93;
+    --line: rgba(60,60,67,0.12);
+    --blue: #007aff;
+    --blue-bg: #e8f1ff;
+    --green: #34c759;
+    --red: #ff3b30;
+    --red-bg: rgba(255,59,48,0.08);
+    --radius: 12px;
+    --radius-sm: 8px;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #000000;
+      --surface: #1c1c1e;
+      --surface2: #2c2c2e;
+      --ink: #ffffff;
+      --ink2: #ebebf5;
+      --muted: #8e8e93;
+      --line: rgba(255,255,255,0.1);
+      --blue-bg: rgba(0,122,255,0.15);
+      --red-bg: rgba(255,59,48,0.12);
+    }
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Google Sans", Roboto, "Helvetica Neue", sans-serif;
+    font-size: 17px;
+    min-height: 100vh;
+    padding: 0 0 calc(100px + env(safe-area-inset-bottom));
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* ── Header ── */
+  .app-header {
+    background: rgba(242,242,247,0.92);
+    border-bottom: 1px solid var(--line);
+    padding: max(52px, calc(16px + env(safe-area-inset-top))) 20px 16px;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+  }
+  @media (prefers-color-scheme: dark) {
+    .app-header { background: rgba(28,28,30,0.92); }
+  }
+  @supports not (backdrop-filter: blur(1px)) {
+    .app-header { background: var(--bg); }
+  }
+  .app-header-inner { max-width: 680px; margin: 0 auto; display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+  .app-title { font-size: clamp(1.5rem, 5vw, 2rem); font-weight: 700; letter-spacing: -0.03em; color: var(--ink); }
+  .app-subtitle { font-size: 13px; color: var(--muted); }
+
+  .container { max-width: 680px; margin: 0 auto; padding: 24px 16px 0; }
+  .hint { font-size: 13px; color: var(--muted); margin-bottom: 20px; padding: 0 4px; }
+
+  /* ── Section ── */
+  .section { margin-bottom: 32px; }
+  .section-header { display: flex; align-items: center; justify-content: space-between; padding: 0 4px 8px; }
+  .section-label { font-size: 13px; font-weight: 600; letter-spacing: 0.01em; color: var(--muted); text-transform: uppercase; }
+  .delete-section-btn { font-size: 13px; color: var(--red); background: none; border: none; cursor: pointer; padding: 2px 0; opacity: 0.7; transition: opacity 0.15s; font-family: inherit; }
+  .delete-section-btn:hover { opacity: 1; }
+
+  .section-card { background: var(--surface); border-radius: var(--radius); overflow: hidden; }
+
+  /* ── Item ── */
+  .item-wrap { border-bottom: 1px solid var(--line); }
+  .item-wrap:last-child { border-bottom: none; }
+  .item { display: grid; grid-template-columns: auto 1fr auto auto auto; align-items: center; gap: 10px; padding: 13px 16px; }
+
+  .item-toggle {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    border: 2px solid var(--line);
+    background: transparent;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    transition: all 0.2s;
+    color: transparent;
+    font-size: 13px;
+    position: relative;
+  }
+  .item-toggle::after { content: ''; position: absolute; inset: -10px; }
+  .item-toggle:hover { border-color: var(--green); }
+  .item-toggle.active { background: var(--green); border-color: var(--green); color: white; }
+
+  .item-meta { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+
+  .item-name-input {
+    font-size: 17px; font-family: inherit; background: transparent;
+    border: none; color: var(--ink); width: 100%; padding: 0;
+  }
+  .item-name-input:focus { outline: none; }
+  .item-name-input.skipped { color: var(--muted); text-decoration: line-through; }
+
+  .item-name-link { font-size: 17px; color: var(--blue); text-decoration: none; }
+  .item-name-link:hover { text-decoration: underline; }
+  .item-name-link.skipped { color: var(--muted); text-decoration: line-through; }
+
+  .base-price-wrap { display: flex; align-items: center; }
+  .base-price-input {
+    width: 72px; background: var(--surface2); border: none; border-radius: 8px;
+    padding: 5px 8px; font-family: inherit; font-size: 15px;
+    font-variant-numeric: tabular-nums; color: var(--ink2); text-align: right;
+    -moz-appearance: textfield; transition: opacity 0.2s;
+  }
+  .base-price-input::-webkit-outer-spin-button, .base-price-input::-webkit-inner-spin-button { -webkit-appearance: none; }
+  .base-price-input:focus { outline: 2px solid var(--blue); }
+  .base-price-input.overridden { opacity: 0.3; text-decoration: line-through; }
+
+  .icon-btn {
+    width: 36px; height: 36px; border-radius: 50%; border: none;
+    background: var(--surface2); cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px; color: var(--muted); transition: all 0.15s;
+    flex-shrink: 0; position: relative;
+  }
+  .icon-btn::after { content: ''; position: absolute; inset: -6px; }
+  .icon-btn:hover { background: var(--line); color: var(--ink); }
+  .icon-btn.delete:hover { background: var(--red-bg); color: var(--red); }
+  .icon-btn.link-btn:hover { color: var(--blue); }
+  .icon-btn.link-btn.has-links { background: var(--blue); color: white; }
+  .icon-btn.link-btn.has-links:hover { background: #0066d6; }
+
+  /* ── Links panel ── */
+  .links-panel { background: var(--surface2); margin: 0 12px 12px; border-radius: var(--radius-sm); padding: 14px 16px; display: none; }
+  .links-panel.open { display: block; }
+  .links-panel-title { font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; }
+
+  .link-option { display: grid; grid-template-columns: auto 1fr auto auto auto; gap: 10px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--line); }
+  .link-option:last-of-type { border-bottom: none; }
+
+  .option-radio {
+    width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--line);
+    background: transparent; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; transition: all 0.2s; position: relative;
+  }
+  .option-radio::after { content: ''; position: absolute; inset: -10px; }
+  .option-radio:hover { border-color: var(--blue); }
+  .option-radio.selected { border-color: var(--blue); background: var(--blue); }
+  .option-radio.selected::after { content: ''; width: 8px; height: 8px; border-radius: 50%; background: white; display: block; position: static; inset: auto; }
+
+  .option-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .option-label-link { font-size: 15px; font-weight: 500; color: var(--blue); text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .option-label-link:hover { text-decoration: underline; }
+  .option-label-nolink { font-size: 15px; font-weight: 500; color: var(--ink); }
+  .option-brand { font-size: 12px; color: var(--muted); }
+
+  .option-price-wrap { display: flex; align-items: center; }
+  .option-price-input {
+    width: 68px; background: var(--surface); border: none; border-radius: 6px;
+    padding: 4px 8px; font-family: inherit; font-size: 14px;
+    font-variant-numeric: tabular-nums; color: var(--ink); text-align: right; -moz-appearance: textfield;
+  }
+  .option-price-input::-webkit-outer-spin-button, .option-price-input::-webkit-inner-spin-button { -webkit-appearance: none; }
+  .option-price-input:focus { outline: 2px solid var(--blue); }
+
+  .selected-badge { font-size: 11px; font-weight: 600; color: var(--blue); background: var(--blue-bg); padding: 3px 8px; border-radius: 20px; white-space: nowrap; }
+  .link-del-btn { background: none; border: none; cursor: pointer; color: var(--muted); font-size: 16px; line-height: 1; transition: color 0.15s; flex-shrink: 0; }
+  .link-del-btn:hover { color: var(--red); }
+
+  /* Add link form */
+  .add-link-form { display: grid; grid-template-columns: 2fr 2fr 1fr 68px auto; gap: 8px; align-items: end; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
+  .add-link-field { display: flex; flex-direction: column; gap: 4px; }
+  .add-link-field label { font-size: 11px; font-weight: 500; color: var(--muted); letter-spacing: 0.04em; text-transform: uppercase; }
+  .add-link-form input {
+    background: var(--surface); border: 1.5px solid var(--line); border-radius: var(--radius-sm);
+    padding: 7px 10px; font-family: inherit; font-size: 14px; color: var(--ink); width: 100%;
+    -moz-appearance: textfield; transition: border-color 0.15s;
+  }
+  .add-link-form input[type="number"]::-webkit-outer-spin-button,
+  .add-link-form input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; }
+  .add-link-form input:focus { outline: none; border-color: var(--blue); }
+  .add-link-form input::placeholder { color: var(--muted); }
+  .add-link-btn {
+    background: var(--blue); color: white; border: none; border-radius: var(--radius-sm);
+    padding: 8px 12px; font-family: inherit; font-size: 14px; font-weight: 600;
+    cursor: pointer; white-space: nowrap; align-self: end; transition: background 0.15s;
+  }
+  .add-link-btn:hover { background: #0066d6; }
+
+  /* ── Add item row ── */
+  .add-item-row { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; padding: 12px 16px; align-items: center; border-top: 1px solid var(--line); }
+  .add-item-row input { background: transparent; border: none; font-family: inherit; font-size: 17px; color: var(--blue); width: 100%; padding: 0; -moz-appearance: textfield; }
+  .add-item-row input[type="number"]::-webkit-outer-spin-button,
+  .add-item-row input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; }
+  .add-item-row input:focus { outline: none; }
+  .add-item-row input::placeholder { color: var(--blue); opacity: 0.7; }
+  .add-item-row input[type="number"] { font-size: 15px; color: var(--muted); text-align: right; width: 68px; }
+  .add-item-row input[type="number"]::placeholder { color: var(--muted); opacity: 1; }
+  .add-item-btn {
+    width: 28px; height: 28px; border-radius: 50%; border: none; background: var(--blue);
+    color: white; font-size: 18px; line-height: 1; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; transition: background 0.15s;
+  }
+  .add-item-btn:hover { background: #0066d6; }
+
+  /* ── Add section ── */
+  .add-section-area { margin-top: 16px; display: flex; gap: 10px; align-items: center; background: var(--surface); border-radius: var(--radius); padding: 14px 16px; }
+  .add-section-area input { flex: 1; background: transparent; border: none; font-family: inherit; font-size: 17px; color: var(--blue); }
+  .add-section-area input:focus { outline: none; }
+  .add-section-area input::placeholder { color: var(--blue); opacity: 0.7; }
+  .add-section-btn { font-size: 15px; font-weight: 600; color: var(--blue); background: none; border: none; cursor: pointer; font-family: inherit; padding: 0; white-space: nowrap; transition: opacity 0.15s; }
+  .add-section-btn:hover { opacity: 0.7; }
+
+  /* ── Footer ── */
+  .sticky-footer {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: rgba(242,242,247,0.92);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border-top: 1px solid var(--line);
+    padding: 12px 24px calc(16px + env(safe-area-inset-bottom));
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  @media (prefers-color-scheme: dark) { .sticky-footer { background: rgba(28,28,30,0.92); } }
+  @supports not (backdrop-filter: blur(1px)) { .sticky-footer { background: var(--bg); } }
+  .footer-left { display: flex; flex-direction: column; gap: 1px; }
+  .footer-label { font-size: 13px; color: var(--muted); font-weight: 500; }
+  .footer-sub { font-size: 12px; color: var(--muted); }
+  .footer-save { font-size: 11px; color: var(--green); font-weight: 500; }
+  .footer-total { font-size: 2rem; font-weight: 700; letter-spacing: -0.03em; color: var(--ink); font-variant-numeric: tabular-nums; }
+</style>
+</head>
+<body>
+
+<div class="app-header">
+  <div class="app-header-inner">
+    <div class="app-title">Move-in Budget</div>
+    <div class="app-subtitle">Unit A20 &bull; Toronto</div>
+  </div>
+</div>
+
+<div class="container">
+  <p class="hint">Tap ✓ to include an item &bull; 🔗 to add purchase options &bull; Select an option to use its price</p>
+  <div id="sections"></div>
+  <div class="add-section-area">
+    <input type="text" id="new-section-name" placeholder="Add new section...">
+    <button class="add-section-btn" onclick="addSection()">Add</button>
+  </div>
+</div>
+
+<div class="sticky-footer">
+  <div class="footer-left">
+    <div class="footer-label">Estimated Total</div>
+    <div class="footer-sub" id="item-count"></div>
+    <div class="footer-save" id="save-indicator"></div>
+  </div>
+  <div class="footer-total" id="grand-total">$0</div>
+</div>
+
+<script>
+const DEFAULT_STATE = [
+  { section: "Entryway", items: [
+    { name: "Shoe rack / storage", basePrice: 60, on: true, links: [], selectedLink: null },
+    { name: "Coat hooks / rack", basePrice: 40, on: true, links: [], selectedLink: null },
+    { name: "Entry mat (indoor)", basePrice: 25, on: true, links: [], selectedLink: null },
+    { name: "Entry mat (outdoor)", basePrice: 25, on: true, links: [], selectedLink: null },
+    { name: "Key hooks / dish tray", basePrice: 20, on: true, links: [], selectedLink: null },
+    { name: "Console table", basePrice: 150, on: true, links: [], selectedLink: null },
+  ]},
+  { section: "Kitchen", items: [
+    { name: "Cups / glasses", basePrice: 30, on: true, links: [], selectedLink: null },
+    { name: "Pots & pans", basePrice: 70, on: true, links: [], selectedLink: null },
+    { name: "Cooking utensils", basePrice: 10, on: true, links: [], selectedLink: null },
+    { name: "Toaster", basePrice: 35, on: true, links: [], selectedLink: null },
+    { name: "Plates & bowls", basePrice: 40, on: true, links: [], selectedLink: null },
+    { name: "Trash can", basePrice: 40, on: true, links: [], selectedLink: null },
+    { name: "Knife block / knife set", basePrice: 60, on: true, links: [], selectedLink: null },
+    { name: "Cutting board", basePrice: 25, on: true, links: [], selectedLink: null },
+    { name: "Dish drying rack", basePrice: 30, on: true, links: [], selectedLink: null },
+    { name: "Dish soap / sponge holder", basePrice: 15, on: true, links: [], selectedLink: null },
+    { name: "Paper towel holder", basePrice: 15, on: true, links: [], selectedLink: null },
+    { name: "Oven mitts", basePrice: 15, on: true, links: [], selectedLink: null },
+    { name: "Food storage containers", basePrice: 35, on: true, links: [], selectedLink: null },
+    { name: "Kettle", basePrice: 40, on: true, links: [], selectedLink: null },
+    { name: "Coffee maker", basePrice: 60, on: true, links: [], selectedLink: null },
+  ]},
+  { section: "Bathroom", items: [
+    { name: "Towels", basePrice: 35, on: true, links: [], selectedLink: null },
+    { name: "Bath mat", basePrice: 25, on: true, links: [], selectedLink: null },
+    { name: "Storage solution", basePrice: 125, on: true, links: [], selectedLink: null },
+    { name: "Showerhead", basePrice: 40, on: true, links: [], selectedLink: null },
+    { name: "Shower curtain", basePrice: 30, on: true, links: [], selectedLink: null },
+    { name: "Toilet brush", basePrice: 15, on: true, links: [], selectedLink: null },
+    { name: "Plunger", basePrice: 20, on: true, links: [], selectedLink: null },
+    { name: "Soap dispenser / toothbrush holder", basePrice: 20, on: true, links: [], selectedLink: null },
+  ]},
+  { section: "Bedroom", items: [
+    { name: "Mattress + frame (queen)", basePrice: 350, on: true, links: [], selectedLink: null },
+    { name: "Duvet & cover", basePrice: 110, on: true, links: [], selectedLink: null },
+    { name: "Sheets", basePrice: 50, on: true, links: [], selectedLink: null },
+    { name: "Pillows", basePrice: 60, on: true, links: [], selectedLink: null },
+    { name: "Pillowcases", basePrice: 20, on: true, links: [], selectedLink: null },
+    { name: "Chest of drawers", basePrice: 230, on: true, links: [], selectedLink: null },
+    { name: "Nightstand", basePrice: 70, on: true, links: [], selectedLink: null },
+    { name: "Lamp / lighting", basePrice: 100, on: true, links: [], selectedLink: null },
+    { name: "Mirror", basePrice: 100, on: true, links: [], selectedLink: null },
+    { name: "Hangers", basePrice: 20, on: true, links: [], selectedLink: null },
+    { name: "Blackout curtains", basePrice: 80, on: true, links: [], selectedLink: null },
+  ]},
+  { section: "Living Room", items: [
+    { name: "Couch", basePrice: 700, on: true, links: [], selectedLink: null },
+    { name: "TV", basePrice: 300, on: true, links: [], selectedLink: null },
+    { name: "TV bench / stand", basePrice: 150, on: true, links: [], selectedLink: null },
+    { name: "Coffee table", basePrice: 50, on: true, links: [], selectedLink: null },
+    { name: "Lamp", basePrice: 100, on: true, links: [], selectedLink: null },
+    { name: "Curtains / blinds (Juliet balcony)", basePrice: 60, on: true, links: [], selectedLink: null },
+    { name: "Power bar / surge protector", basePrice: 30, on: true, links: [], selectedLink: null },
+  ]},
+  { section: "Laundry", items: [
+    { name: "Laundry hamper", basePrice: 35, on: true, links: [], selectedLink: null },
+    { name: "Laundry detergent", basePrice: 25, on: true, links: [], selectedLink: null },
+    { name: "Dryer sheets", basePrice: 10, on: true, links: [], selectedLink: null },
+  ]},
+  { section: "Cleaning", items: [
+    { name: "Vacuum", basePrice: 120, on: true, links: [], selectedLink: null },
+    { name: "Mop & bucket", basePrice: 30, on: true, links: [], selectedLink: null },
+    { name: "Toilet cleaner", basePrice: 10, on: true, links: [], selectedLink: null },
+    { name: "Glass cleaner", basePrice: 8, on: true, links: [], selectedLink: null },
+    { name: "All-purpose cleaner", basePrice: 10, on: true, links: [], selectedLink: null },
+  ]},
+  { section: "Misc.", items: [
+    { name: "Storage containers", basePrice: 100, on: true, links: [], selectedLink: null },
+    { name: "Home improvement tools", basePrice: 75, on: true, links: [], selectedLink: null },
+    { name: "Area rug", basePrice: 150, on: true, links: [], selectedLink: null },
+    { name: "Light bulbs", basePrice: 20, on: true, links: [], selectedLink: null },
+    { name: "Extension cords", basePrice: 25, on: true, links: [], selectedLink: null },
+    { name: "Command hooks / wall hardware", basePrice: 20, on: true, links: [], selectedLink: null },
+    { name: "First aid kit", basePrice: 30, on: true, links: [], selectedLink: null },
+    { name: "Fire extinguisher", basePrice: 50, on: true, links: [], selectedLink: null },
+    { name: "Other misc.", basePrice: 50, on: true, links: [], selectedLink: null },
+  ]}
+];
+
+function loadState() {
+  try {
+    const saved = localStorage.getItem('moveInBudgetV3');
+    if (saved) return JSON.parse(saved);
+  } catch(e) {}
+  return JSON.parse(JSON.stringify(DEFAULT_STATE));
+}
+
+let state = loadState();
+let openPanels = new Set();
+
+let saveTimer = null;
+function scheduleSave() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    try {
+      localStorage.setItem('moveInBudgetV3', JSON.stringify(state));
+      const el = document.getElementById('save-indicator');
+      if (el) { el.textContent = 'Saved'; setTimeout(() => el.textContent = '', 1500); }
+    } catch(e) {}
+  }, 600);
+}
+
+function effectivePrice(item) {
+  if (item.selectedLink !== null && item.links && item.links[item.selectedLink] != null) {
+    return item.links[item.selectedLink].price || 0;
+  }
+  return item.basePrice || 0;
+}
+
+function updateTotal() {
+  let total = 0, count = 0;
+  state.forEach(s => s.items.forEach(i => { if (i.on) { total += effectivePrice(i); count++; } }));
+  document.getElementById('grand-total').textContent = '$' + total.toLocaleString();
+  document.getElementById('item-count').textContent = count + ' items included';
+}
+
+function render() {
+  const container = document.getElementById('sections');
+  container.innerHTML = '';
+
+  state.forEach((section, si) => {
+    const div = document.createElement('div');
+    div.className = 'section';
+
+    // Section header
+    const hdr = document.createElement('div');
+    hdr.className = 'section-header';
+    const lbl = document.createElement('div');
+    lbl.className = 'section-label';
+    lbl.textContent = section.section;
+    const delSec = document.createElement('button');
+    delSec.className = 'delete-section-btn';
+    delSec.textContent = 'Remove section';
+    delSec.onclick = () => {
+      if (!section.items.length || confirm(`Remove "${section.section}" and all its items?`)) {
+        state.splice(si, 1); scheduleSave(); render();
+      }
+    };
+    hdr.appendChild(lbl); hdr.appendChild(delSec); div.appendChild(hdr);
+
+    const card = document.createElement('div');
+    card.className = 'section-card';
+
+    section.items.forEach((item, ii) => {
+      const panelKey = `${si}-${ii}`;
+      const wrap = document.createElement('div');
+      wrap.className = 'item-wrap';
+
+      // Main row
+      const row = document.createElement('div');
+      row.className = 'item';
+
+      // Toggle
+      const toggle = document.createElement('button');
+      toggle.className = 'item-toggle' + (item.on ? ' active' : '');
+      toggle.textContent = item.on ? '✓' : '';
+      toggle.onclick = () => { state[si].items[ii].on = !item.on; scheduleSave(); render(); };
+
+      // Name (link if option selected, input otherwise)
+      const metaEl = document.createElement('div');
+      metaEl.className = 'item-meta';
+
+      const selectedUrl = item.selectedLink !== null && item.links[item.selectedLink]?.url
+        ? item.links[item.selectedLink].url : null;
+
+      if (selectedUrl) {
+        const nameLink = document.createElement('a');
+        nameLink.href = selectedUrl;
+        nameLink.target = '_blank';
+        nameLink.rel = 'noopener noreferrer';
+        nameLink.className = 'item-name-link' + (item.on ? '' : ' skipped');
+        nameLink.textContent = item.name;
+        metaEl.appendChild(nameLink);
+      } else {
+        const nameEl = document.createElement('input');
+        nameEl.type = 'text';
+        nameEl.className = 'item-name-input' + (item.on ? '' : ' skipped');
+        nameEl.value = item.name;
+        nameEl.addEventListener('change', e => {
+          state[si].items[ii].name = e.target.value.trim() || item.name;
+          scheduleSave();
+        });
+        metaEl.appendChild(nameEl);
+      }
+
+      // Base price
+      const basePriceWrap = document.createElement('div');
+      basePriceWrap.className = 'base-price-wrap';
+      const baseInput = document.createElement('input');
+      baseInput.type = 'number';
+      baseInput.className = 'base-price-input' + (item.selectedLink !== null ? ' overridden' : '');
+      baseInput.value = item.basePrice || 0;
+      baseInput.addEventListener('change', e => {
+        state[si].items[ii].basePrice = parseInt(e.target.value) || 0;
+        updateTotal(); scheduleSave();
+      });
+      basePriceWrap.appendChild(baseInput);
+
+      // Link button
+      const linkBtn = document.createElement('button');
+      linkBtn.className = 'icon-btn link-btn' + ((item.links && item.links.length) ? ' has-links' : '');
+      linkBtn.innerHTML = '&#128279;';
+      linkBtn.title = 'Purchase options';
+      linkBtn.onclick = () => {
+        openPanels.has(panelKey) ? openPanels.delete(panelKey) : openPanels.add(panelKey);
+        render();
+      };
+
+      // Delete button
+      const delBtn = document.createElement('button');
+      delBtn.className = 'icon-btn delete';
+      delBtn.innerHTML = '&times;';
+      delBtn.onclick = () => { state[si].items.splice(ii, 1); openPanels.delete(panelKey); scheduleSave(); render(); };
+
+      row.appendChild(toggle); row.appendChild(metaEl); row.appendChild(basePriceWrap);
+      row.appendChild(linkBtn); row.appendChild(delBtn);
+      wrap.appendChild(row);
+
+      // Links panel
+      const panel = document.createElement('div');
+      panel.className = 'links-panel' + (openPanels.has(panelKey) ? ' open' : '');
+
+      const panelTitle = document.createElement('div');
+      panelTitle.className = 'links-panel-title';
+      panelTitle.textContent = 'Purchase options — select one to use its price';
+      panel.appendChild(panelTitle);
+
+      (item.links || []).forEach((link, li) => {
+        const isSelected = item.selectedLink === li;
+        const optRow = document.createElement('div');
+        optRow.className = 'link-option';
+
+        const radio = document.createElement('div');
+        radio.className = 'option-radio' + (isSelected ? ' selected' : '');
+        radio.onclick = () => {
+          state[si].items[ii].selectedLink = isSelected ? null : li;
+          scheduleSave(); render();
+        };
+
+        const info = document.createElement('div');
+        info.className = 'option-info';
+        if (link.url) {
+          const a = document.createElement('a');
+          a.className = 'option-label-link';
+          a.href = link.url; a.target = '_blank'; a.rel = 'noopener noreferrer';
+          a.textContent = link.label || link.url; a.title = link.url;
+          info.appendChild(a);
+        } else {
+          const span = document.createElement('span');
+          span.className = 'option-label-nolink';
+          span.textContent = link.label || 'Option';
+          info.appendChild(span);
+        }
+        if (link.brand) {
+          const brandSpan = document.createElement('span');
+          brandSpan.className = 'option-brand';
+          brandSpan.textContent = link.brand;
+          info.appendChild(brandSpan);
+        }
+
+        const optPriceWrap = document.createElement('div');
+        optPriceWrap.className = 'option-price-wrap';
+        const optPrice = document.createElement('input');
+        optPrice.type = 'number';
+        optPrice.className = 'option-price-input';
+        optPrice.value = link.price || 0;
+        optPrice.addEventListener('change', e => {
+          state[si].items[ii].links[li].price = parseInt(e.target.value) || 0;
+          updateTotal(); scheduleSave();
+        });
+        optPriceWrap.appendChild(optPrice);
+
+        const badge = document.createElement('span');
+        badge.className = 'selected-badge';
+        badge.textContent = 'Selected';
+        badge.style.visibility = isSelected ? 'visible' : 'hidden';
+
+        const delLink = document.createElement('button');
+        delLink.className = 'link-del-btn';
+        delLink.innerHTML = '&times;';
+        delLink.onclick = () => {
+          state[si].items[ii].links.splice(li, 1);
+          if (item.selectedLink === li) state[si].items[ii].selectedLink = null;
+          else if (item.selectedLink > li) state[si].items[ii].selectedLink--;
+          scheduleSave(); render();
+        };
+
+        optRow.appendChild(radio); optRow.appendChild(info); optRow.appendChild(optPriceWrap);
+        optRow.appendChild(badge); optRow.appendChild(delLink);
+        panel.appendChild(optRow);
+      });
+
+      // Add link form
+      const addForm = document.createElement('div');
+      addForm.className = 'add-link-form';
+
+      const labelField = document.createElement('div'); labelField.className = 'add-link-field';
+      const labelLbl = document.createElement('label'); labelLbl.textContent = 'Label';
+      const labelIn = document.createElement('input'); labelIn.type = 'text'; labelIn.placeholder = 'e.g. IKEA option'; labelIn.maxLength = 50;
+      labelField.appendChild(labelLbl); labelField.appendChild(labelIn);
+
+      const urlField = document.createElement('div'); urlField.className = 'add-link-field';
+      const urlLbl = document.createElement('label'); urlLbl.textContent = 'URL (optional)';
+      const urlIn = document.createElement('input'); urlIn.type = 'text'; urlIn.placeholder = 'https://...';
+      urlField.appendChild(urlLbl); urlField.appendChild(urlIn);
+
+      const brandField = document.createElement('div'); brandField.className = 'add-link-field';
+      const brandLbl = document.createElement('label'); brandLbl.textContent = 'Brand (optional)';
+      const brandIn = document.createElement('input'); brandIn.type = 'text'; brandIn.placeholder = 'e.g. IKEA'; brandIn.maxLength = 40;
+      brandField.appendChild(brandLbl); brandField.appendChild(brandIn);
+
+      const priceField = document.createElement('div'); priceField.className = 'add-link-field';
+      const priceLbl = document.createElement('label'); priceLbl.textContent = 'Price $';
+      const priceIn = document.createElement('input'); priceIn.type = 'number'; priceIn.placeholder = '0';
+      priceField.appendChild(priceLbl); priceField.appendChild(priceIn);
+
+      const addLinkBtn = document.createElement('button');
+      addLinkBtn.className = 'add-link-btn';
+      addLinkBtn.textContent = '+ Save';
+
+      const doAddLink = () => {
+        const label = labelIn.value.trim();
+        if (!label) { labelIn.focus(); return; }
+        let url = urlIn.value.trim();
+        if (url && !/^https?:\/\//i.test(url)) url = 'https://' + url;
+        const brand = brandIn.value.trim();
+        const price = parseInt(priceIn.value) || 0;
+        if (!state[si].items[ii].links) state[si].items[ii].links = [];
+        state[si].items[ii].links.push({ label, url, brand, price });
+        scheduleSave(); render();
+      };
+
+      addLinkBtn.onclick = doAddLink;
+      labelIn.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); urlIn.focus(); } });
+      urlIn.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); brandIn.focus(); } });
+      brandIn.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); priceIn.focus(); } });
+      priceIn.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); doAddLink(); } });
+
+      addForm.appendChild(labelField); addForm.appendChild(urlField);
+      addForm.appendChild(brandField); addForm.appendChild(priceField); addForm.appendChild(addLinkBtn);
+      panel.appendChild(addForm);
+      wrap.appendChild(panel);
+      card.appendChild(wrap);
+    });
+
+    // Add item row
+    const addRow = document.createElement('div');
+    addRow.className = 'add-item-row';
+    const nameIn = document.createElement('input');
+    nameIn.type = 'text'; nameIn.placeholder = 'Add item...'; nameIn.maxLength = 60;
+    const priceIn = document.createElement('input');
+    priceIn.type = 'number'; priceIn.placeholder = '$0';
+    const addBtn = document.createElement('button');
+    addBtn.className = 'add-item-btn'; addBtn.textContent = '+';
+
+    const doAdd = () => {
+      const n = nameIn.value.trim();
+      if (!n) { nameIn.focus(); return; }
+      state[si].items.push({ name: n, basePrice: parseInt(priceIn.value) || 0, on: true, links: [], selectedLink: null });
+      scheduleSave(); render();
+    };
+    addBtn.onclick = doAdd;
+    nameIn.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); priceIn.focus(); } });
+    priceIn.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); doAdd(); } });
+
+    addRow.appendChild(nameIn); addRow.appendChild(priceIn); addRow.appendChild(addBtn);
+    card.appendChild(addRow);
+    div.appendChild(card);
+    container.appendChild(div);
+  });
+
+  updateTotal();
+}
+
+function addSection() {
+  const input = document.getElementById('new-section-name');
+  const name = input.value.trim();
+  if (!name) { input.focus(); return; }
+  state.push({ section: name, items: [] });
+  input.value = ''; scheduleSave(); render();
+  setTimeout(() => {
+    const secs = document.querySelectorAll('.section');
+    if (secs.length) secs[secs.length - 1].scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, 50);
+}
+
+document.getElementById('new-section-name').addEventListener('keydown', e => {
+  if (e.key === 'Enter') { e.preventDefault(); addSection(); }
+});
+
+render();
+</script>
+</body>
+</html>
