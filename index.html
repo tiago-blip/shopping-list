@@ -549,7 +549,7 @@ function renderAuthUI(user, isHomepage = false) {
       area.innerHTML = `
         <span class="auth-email">${user.email}</span>
         <button class="undo-btn" id="undo-btn" onclick="undo()" style="display:none" title="Undo last deletion (⌘Z)">↩ Undo</button>
-        <button class="header-btn back-btn" onclick="goHome()">← Lists</button>
+        <button class="settings-btn" onclick="goHome()" title="My Lists">🏠</button>
         <button class="header-btn share-btn" id="share-btn" onclick="shareList()">Share link</button>
         <button class="settings-btn" onclick="openSettings()" title="Settings">⚙️</button>
         <button class="header-btn signout-btn" onclick="signOut()">Sign out</button>
