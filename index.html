@@ -325,8 +325,15 @@
   /* ── Open URL button in link options ── */
   .option-label-row { display: flex; align-items: center; gap: 4px; min-width: 0; }
   .option-label-row .option-label-input { flex: 1; }
-  .option-open-url { color: var(--muted); font-size: 12px; text-decoration: none; flex-shrink: 0; padding: 2px 3px; border-radius: 4px; transition: color 0.15s; line-height: 1; }
+  .option-open-url { color: var(--muted); font-size: 12px; text-decoration: none; flex-shrink: 0; padding: 2px 3px; border-radius: 4px; transition: color 0.15s, opacity 0.15s; line-height: 1; }
   .option-open-url:hover { color: var(--blue); }
+  .option-secondary { display: flex; gap: 8px; margin-top: 3px; min-width: 0; }
+  .option-url-input { font-size: 12px; color: var(--blue); background: transparent; border: none; padding: 0; font-family: inherit; min-width: 0; flex: 1; }
+  .option-url-input:focus { outline: none; }
+  .option-url-input::placeholder { color: var(--muted); opacity: 0.7; font-style: italic; }
+  .option-brand-input { font-size: 12px; color: var(--muted); background: transparent; border: none; padding: 0; font-family: inherit; width: 80px; flex-shrink: 0; text-align: right; }
+  .option-brand-input:focus { outline: none; }
+  .option-brand-input::placeholder { color: var(--muted); opacity: 0.5; font-style: italic; }
 </style>
 </head>
 <body>
@@ -878,9 +885,9 @@ async function searchGoogleShopping(si, ii) {
     top3.forEach(r => {
       state[si].items[ii].links.push({
         label: r.title,
-        url: r.link || '',
+        url: r.link || r.product_link || r.url || '',
         brand: r.source || '',
-        price: Math.round(r.extracted_price || 0)
+        price: Math.round(r.extracted_price || r.price?.extracted || 0)
       });
     });
 
@@ -1052,6 +1059,7 @@ function render() {
 
         const info = document.createElement('div');
         info.className = 'option-info';
+
         const labelRow = document.createElement('div');
         labelRow.className = 'option-label-row';
         const labelInput = document.createElement('input');
@@ -1063,24 +1071,60 @@ function render() {
           state[si].items[ii].links[li].label = e.target.value.trim(); scheduleSave();
         });
         labelInput.addEventListener('keydown', e => { if (e.key === 'Enter') e.target.blur(); });
+
+        const openLink = document.createElement('a');
+        openLink.className = 'option-open-url';
+        openLink.title = 'Open link';
+        openLink.textContent = '↗';
+        openLink.target = '_blank';
+        openLink.rel = 'noopener noreferrer';
+        openLink.href = link.url || '#';
+        openLink.style.opacity = link.url ? '1' : '0.3';
+        openLink.onclick = (e) => {
+          if (!link.url) e.preventDefault();
+          e.stopPropagation();
+        };
+
         labelRow.appendChild(labelInput);
-        if (link.url) {
-          const openLink = document.createElement('a');
-          openLink.href = link.url;
-          openLink.target = '_blank';
-          openLink.rel = 'noopener noreferrer';
-          openLink.className = 'option-open-url';
-          openLink.title = 'Open link';
-          openLink.textContent = '↗';
-          openLink.onclick = (e) => e.stopPropagation();
-          labelRow.appendChild(openLink);
-        }
+        labelRow.appendChild(openLink);
         info.appendChild(labelRow);
-        if (link.brand) {
-          const brandSpan = document.createElement('span');
-          brandSpan.className = 'option-brand'; brandSpan.textContent = link.brand;
-          info.appendChild(brandSpan);
-        }
+
+        const secRow = document.createElement('div');
+        secRow.className = 'option-secondary';
+
+        const urlInput = document.createElement('input');
+        urlInput.type = 'text';
+        urlInput.className = 'option-url-input';
+        urlInput.value = link.url || '';
+        urlInput.placeholder = 'Paste URL...';
+        urlInput.addEventListener('input', e => {
+          openLink.href = e.target.value || '#';
+          openLink.style.opacity = e.target.value ? '1' : '0.3';
+        });
+        urlInput.addEventListener('change', e => {
+          let url = e.target.value.trim();
+          if (url && !/^https?:\/\//i.test(url)) { url = 'https://' + url; urlInput.value = url; }
+          state[si].items[ii].links[li].url = url;
+          openLink.href = url || '#';
+          openLink.style.opacity = url ? '1' : '0.3';
+          labelInput.className = 'option-label-input' + (url ? ' has-url' : '');
+          scheduleSave();
+        });
+        urlInput.addEventListener('keydown', e => { if (e.key === 'Enter') e.target.blur(); });
+
+        const brandInput = document.createElement('input');
+        brandInput.type = 'text';
+        brandInput.className = 'option-brand-input';
+        brandInput.value = link.brand || '';
+        brandInput.placeholder = 'Brand';
+        brandInput.addEventListener('change', e => {
+          state[si].items[ii].links[li].brand = e.target.value.trim(); scheduleSave();
+        });
+        brandInput.addEventListener('keydown', e => { if (e.key === 'Enter') e.target.blur(); });
+
+        secRow.appendChild(urlInput);
+        secRow.appendChild(brandInput);
+        info.appendChild(secRow);
 
         const optPriceWrap = document.createElement('div');
         optPriceWrap.className = 'option-price-wrap';
