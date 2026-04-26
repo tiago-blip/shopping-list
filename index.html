@@ -348,12 +348,8 @@
     </div>
 
     <div class="settings-group">
-      <div class="settings-group-label">SerpAPI</div>
-      <div class="settings-field">
-        <label>API Key</label>
-        <input type="password" id="s-serpkey" placeholder="Paste your SerpAPI key">
-        <div class="settings-note">Free tier: 100 searches/month. Get a key at <a href="https://serpapi.com" target="_blank" rel="noopener">serpapi.com</a></div>
-      </div>
+      <div class="settings-group-label">Google Shopping</div>
+      <div class="settings-note" style="padding:0 2px">Search is powered by SerpAPI via a server-side proxy. The API key is configured on the server — no setup needed here.</div>
     </div>
 
     <div class="modal-actions">
@@ -613,8 +609,7 @@ function saveSettings() {
   settings = {
     city: document.getElementById('s-city').value.trim(),
     country: document.getElementById('s-country').value.trim(),
-    postcode: document.getElementById('s-postcode').value.trim(),
-    serpApiKey: document.getElementById('s-serpkey').value.trim()
+    postcode: document.getElementById('s-postcode').value.trim()
   };
   const listId = getListId();
   if (auth.currentUser && listId) {
@@ -692,7 +687,6 @@ function rankResults(results) {
 }
 
 async function searchGoogleShopping(si, ii) {
-  if (!settings.serpApiKey) { openSettings(); return; }
   const panelKey = `${si}-${ii}`;
   loadingItems.add(panelKey);
   errorItems.delete(panelKey);
@@ -700,14 +694,10 @@ async function searchGoogleShopping(si, ii) {
 
   try {
     const location = [settings.city, settings.country].filter(Boolean).join(', ');
-    const params = new URLSearchParams({
-      engine: 'google_shopping',
-      q: state[si].items[ii].name,
-      api_key: settings.serpApiKey
-    });
+    const params = new URLSearchParams({ q: state[si].items[ii].name });
     if (location) params.set('location', location);
 
-    const res = await fetch(`https://serpapi.com/search.json?${params}`);
+    const res = await fetch(`/api/search?${params}`);
     const data = await res.json();
     console.log('SerpAPI response:', data);
 
@@ -845,8 +835,8 @@ function render() {
       const searchBtn = document.createElement('button');
       searchBtn.className = 'icon-btn search-btn' + (isLoading ? ' loading' : '') + (isError ? ' error' : '');
       searchBtn.innerHTML = `<span>${isError ? '!' : '✨'}</span>`;
-      searchBtn.title = isError ? 'Search failed — check console for details' : hasSettings ? 'Find options on Google Shopping' : 'Add your SerpAPI key in Settings first';
-      searchBtn.disabled = isLoading || !hasSettings;
+      searchBtn.title = isError ? 'Search failed — check console for details' : 'Find options on Google Shopping';
+      searchBtn.disabled = isLoading;
       searchBtn.onclick = () => searchGoogleShopping(si, ii);
 
       const linkBtn = document.createElement('button');
