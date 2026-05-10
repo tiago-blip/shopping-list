@@ -342,6 +342,48 @@
   .option-brand-input { font-size: 12px; color: var(--muted); background: transparent; border: none; padding: 0; font-family: inherit; width: 80px; flex-shrink: 0; text-align: right; }
   .option-brand-input:focus { outline: none; }
   .option-brand-input::placeholder { color: var(--muted); opacity: 0.5; font-style: italic; }
+
+  /* ── Item actions wrapper (transparent on desktop, wraps to row on mobile) ── */
+  .item-actions { display: contents; }
+
+  /* ── Mobile ── */
+  @media (max-width: 520px) {
+    /* Header: shrink buttons, hide email */
+    .auth-email { display: none; }
+    .header-btn { padding: 5px 10px; font-size: 12px; }
+    .app-header-inner { gap: 6px; }
+
+    /* Item row: 4-column layout, actions wrap to a second row */
+    .item {
+      grid-template-columns: auto auto 1fr auto;
+      gap: 6px;
+      padding: 10px 12px;
+    }
+    .item-actions {
+      display: flex;
+      grid-column: 1 / -1;
+      justify-content: flex-end;
+      gap: 6px;
+      padding-top: 2px;
+    }
+    .drag-handle { display: none; }
+    .icon-btn { width: 32px; height: 32px; font-size: 14px; }
+    .base-price-input { width: 58px; font-size: 14px; }
+    .selected-price { font-size: 12px; margin-left: 3px; }
+
+    /* Links panel */
+    .links-panel { margin: 0 4px 10px; padding: 12px; }
+    .link-option { grid-template-columns: auto 1fr auto auto; gap: 8px; }
+    .selected-badge { display: none; }
+
+    /* Add link form: 2-column grid, save button spans full width */
+    .add-link-form { grid-template-columns: 1fr 1fr; }
+    .add-link-btn { grid-column: 1 / -1; }
+
+    /* Footer */
+    .sticky-footer { padding: 10px 16px calc(10px + env(safe-area-inset-bottom)); gap: 8px; }
+    .footer-total, .footer-total-actual { font-size: 1.6rem; }
+  }
 </style>
 </head>
 <body>
@@ -1110,8 +1152,17 @@ function render() {
       dragHandle.className = 'drag-handle';
       dragHandle.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="10" height="16" viewBox="0 0 10 16" fill="currentColor"><circle cx="3" cy="2.5" r="1.5"/><circle cx="7" cy="2.5" r="1.5"/><circle cx="3" cy="8" r="1.5"/><circle cx="7" cy="8" r="1.5"/><circle cx="3" cy="13.5" r="1.5"/><circle cx="7" cy="13.5" r="1.5"/></svg>`;
 
-      row.appendChild(dragHandle); row.appendChild(toggle); row.appendChild(metaEl); row.appendChild(basePriceWrap);
-      row.appendChild(searchBtn); row.appendChild(googleBtn); row.appendChild(linkBtn); row.appendChild(delBtn);
+      const actionsDiv = document.createElement('div');
+      actionsDiv.className = 'item-actions';
+      actionsDiv.appendChild(searchBtn);
+      actionsDiv.appendChild(googleBtn);
+      actionsDiv.appendChild(linkBtn);
+      actionsDiv.appendChild(delBtn);
+      row.appendChild(dragHandle);
+      row.appendChild(toggle);
+      row.appendChild(metaEl);
+      row.appendChild(basePriceWrap);
+      row.appendChild(actionsDiv);
       wrap.appendChild(row);
 
       // Links panel
