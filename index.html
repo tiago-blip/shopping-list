@@ -348,10 +348,14 @@
 
   /* ── Mobile ── */
   @media (max-width: 520px) {
-    /* Header: shrink buttons, hide email */
+    /* Header */
     .auth-email { display: none; }
+    .app-title { flex-shrink: 1; min-width: 0; }
     .header-btn { padding: 5px 10px; font-size: 12px; }
     .app-header-inner { gap: 6px; }
+    /* In list view only: hide Share and Sign out — leaves ← My Lists + ⚙️ */
+    .auth-area--list .share-btn { display: none; }
+    .auth-area--list .signout-btn { display: none; }
 
     /* Item row: 4-column layout, actions wrap to a second row */
     .item {
@@ -601,6 +605,7 @@ function shareList() {
 
 function renderAuthUI(user, isHomepage = false) {
   const area = document.getElementById('auth-area');
+  area.className = 'auth-area ' + (isHomepage ? 'auth-area--home' : 'auth-area--list');
   if (user) {
     if (isHomepage) {
       area.innerHTML = `
