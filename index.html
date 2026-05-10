@@ -115,7 +115,8 @@
   /* ── Section ── */
   .section { margin-bottom: 32px; }
   .section-header { display: flex; align-items: center; justify-content: space-between; padding: 0 4px 8px; }
-  .section-label { font-size: 13px; font-weight: 600; letter-spacing: 0.01em; color: var(--muted); text-transform: uppercase; }
+  .section-label { font-size: 13px; font-weight: 600; letter-spacing: 0.01em; color: var(--muted); text-transform: uppercase; border-radius: 4px; padding: 2px 5px; margin: -2px -5px; outline: none; cursor: text; transition: background 0.15s; }
+  .section-label:hover, .section-label:focus { background: rgba(120,120,128,0.12); }
   .delete-section-btn { font-size: 13px; color: var(--red); background: none; border: none; cursor: pointer; padding: 2px 0; opacity: 0.7; transition: opacity 0.15s; font-family: inherit; }
   .delete-section-btn:hover { opacity: 1; }
   .section-card { background: var(--surface); border-radius: var(--radius); overflow: hidden; }
@@ -986,7 +987,16 @@ function render() {
     hdr.className = 'section-header';
     const lbl = document.createElement('div');
     lbl.className = 'section-label';
+    lbl.contentEditable = 'true';
+    lbl.spellcheck = false;
     lbl.textContent = section.section;
+    lbl.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); lbl.blur(); } });
+    lbl.addEventListener('blur', () => {
+      const name = lbl.textContent.trim() || section.section;
+      lbl.textContent = name;
+      state[si].section = name;
+      scheduleSave();
+    });
     const delSec = document.createElement('button');
     delSec.className = 'delete-section-btn';
     delSec.textContent = 'Remove section';
